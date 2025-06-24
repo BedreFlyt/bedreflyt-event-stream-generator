@@ -1,0 +1,21 @@
+frequency_hz: 10 
+events:
+  - name: "Table Data Example Event"
+    description: "This event uses table data from a CSV file."
+    distribution:
+        type: "normal"
+        mean: 0
+        stddev: 1
+    data_model: "data_models/tables/example.csv"
+    data_model_type: "table"
+  
+  - name: "Sample Distribution Data Example Event"
+    description: "This event uses table data from a CSV file."
+    distribution: ""
+    data_model: "data_models/tables/example.csv"
+    data_model_type: "table"
+
+  - name: "Event2"
+    description: "This is the second event."
+    date: "2023-11-15"
+    location: "Location2"

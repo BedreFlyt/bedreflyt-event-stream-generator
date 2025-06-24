@@ -1,0 +1,11 @@
+frequency_hz: 10 
+events:
+  - name: "Ones"
+    description: "Event only with ones."
+    distribution:
+        type: "normal"
+        mean: 0
+        stddev: 1
+    data_model: 1
+    data_model_type: "constant"
+  
