@@ -1,45 +1,90 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from collections import Counter
 from abc import ABC, abstractmethod
 
 class Distribution(ABC):
-    """Distribution class used in the generator to define common interface"""
+    """Distribution class used in the generator to define a common interface"""
     def __init__(self):
         super().__init__()
 
     @abstractmethod
     def sample (self):
+        """Samples from the distribution. Must be implemented in subclasses."""
         pass
     
 
-
-
 class Generator:
-    """..."""
-    def __init__(self, time_step_seconds=1, distribution_tree=None, run_in_real_time=False):
-        self.__results_tree = None # To hold the results in a tree structure
-        self.time_step_seconds = time_step_seconds
+    """Class used for generating synthetic data based on a user-defined tree-structure of probabilistic distributions
+    
+    :param distribution_tree: dictionary tree structure of distributions of the type Distribution
+    :param output_format: tuple of keys to be used for formatting the output
+    :param output_sorting_function: function to be used for sorting the output, defaults to None
+    """
+    def __init__(self, distribution_tree=None, output_format=None, output_sorting_function=None):
         self.distribution_tree = distribution_tree
-        self.run_in_real_time = run_in_real_time
+        self.output_format = output_format
+        self.output_sorting_function=output_sorting_function
 
-    def generate_results(self):
-        """..."""
+    def set_distribution_tree (self, distribution_tree):
+        """Sets the distribution tree for the generator"""
+        self.distribution_tree = distribution_tree
+    
+    def set_output_format (self, output_format):
+        """Sets the output format for the generator"""
+        self.output_format = output_format
+
+    def set_output_sorting_function (self, output_sorting_function):
+        """Sets the output sorting function for the generator"""
+        self.output_sorting_function = output_sorting_function
+    
+    def generate_data(self):
+        """Generates synthetic data based on the distribution tree, output format and sorting function"""
         res_tree = {}
         self.__sample_dist_tree_rec(self.distribution_tree, 1, res_tree)
-        print(res_tree)
+        formatted_output = self.__format_output(res_tree)
+        if self.output_sorting_function:
+            formatted_output.sort(key=self.output_sorting_function)
+        return formatted_output
 
+    def __format_output (self, results_tree):
+        """Formats the output based on the output format specified in the generator"""
+        if self.output_format == None: 
+            print("Output format not specified, returns results tree")
+            return results_tree
+        else:
+            outputs_to_be_merged = []
+            keys = self.output_format
+            for key in keys:
+                output = self.__find_result_from_key_rec(key, results_tree)
+                outputs_to_be_merged.append(output)
+            
+        return list(zip(*outputs_to_be_merged))
+    
+    def __find_result_from_key_rec(self, key, res_tree=None):
+        """Recursively searches for results in the results tree based on the key provided"""
+        if res_tree is None:
+            raise ValueError("res_tree must be provided when calling __find_result_from_key_rec")
+
+        results = []
+
+        for k, v in res_tree.items():
+            if k == key and isinstance(v, dict) and "res" in v:
+                results.extend(v["res"])
+            elif isinstance(v, dict):
+                # Recursively search nested dictionaries
+                results.extend(self.__find_result_from_key_rec(key, v))
+
+        return results
+            
     
     def __sample_dist_tree_rec(self, dist_tree, prev_res, results_tree={}):    
-         # Sample recursively in sub distributions
-        # - Get Sub Distributions Keys
+        """Recursively samples from the distribution tree and updates the results tree"""
+        
+        # Get distribution keys by removing special keys
         dist_keys = list(dist_tree.keys())
         if "dist" in dist_keys: dist_keys.remove("dist")
         if "no_sample_aggregation" in dist_keys: dist_keys.remove("no_sample_aggregation")
 
-        # print(dist_tree)
-
-        # - distributions recursively
+        # Loop through distribution keys
         for dist_key in dist_keys:
             # Get distribution tree
             sub_dist_tree = dist_tree[dist_key]
@@ -61,6 +106,8 @@ class Generator:
 
             # update results
             results_tree.update(sub_res_tree)
+
+
 
 if __name__ == "__main__":
     
@@ -131,22 +178,12 @@ if __name__ == "__main__":
             super().__init__()
 
         def sample(self):
-            return int(np.random.normal(300, 30))
+            return int(np.random.normal(50, 10))
 
     num_patients_per_day_dist: Distribution = NumberOfPatientsDuringADayDistribution()
 
-    # class ArrivalTime(Distribution):
-    #     def __init__(self):
-    #         super().__init__()
-    #         self.values = ["8-12", "12-16", "16-20", "20-24"]
-    #         self.probabilities = [0.1, 0.3, 0.4, 0.2]
 
-    #     def sample(self):
-    #         return str(np.random.choice(self.values, p=self.probabilities))
-
-    # arrival_time: Distribution = ArrivalTime()
-    import numpy as np
-    from datetime import time
+    from datetime import datetime, time
     import random
 
     class ArrivalTime(Distribution):
@@ -186,22 +223,6 @@ if __name__ == "__main__":
         },
     }
 
-    # for all elements in the distribution tree (top nodes)
-    # sample its distribution
-
-    generator = Generator(1, DistributionTreeNoPatientsPrDay)
-    generator.generate_results()
-
-
-    # DistributionTreeExample = {
-    #     "number_of_patients": {
-    #         "dist": num_patients_dist,
-    #         "gender": {
-    #             "dist": gender_dist,
-    #             "disease": {
-    #                 "dist_Male": male_diseases_dist,
-    #                 "dist_Female": female_diseases_dist
-    #             }
-    #     }
-    #     },
-    # }
+    generator = Generator(DistributionTreeNoPatientsPrDay, ("arrival_time", "gender", "disease"), lambda tup: datetime.strptime(tup[0], "%H:%M:%S").time())
+    output = generator.generate_data()
+    print(output)
