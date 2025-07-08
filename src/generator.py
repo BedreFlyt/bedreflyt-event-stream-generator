@@ -47,19 +47,31 @@ class Generator:
 
     def __format_output (self, results_tree):
         """Formats the output based on the output format specified in the generator"""
+        # Output format is not specified, return results tree
         if self.output_format == None: 
             print("Output format not specified, returns results tree")
             return results_tree
+        # Output format is specified, return formatted output
         else:
-            outputs_to_be_merged = []
-            keys = self.output_format
-            for key in keys:
-                output = self.__find_result_from_key_rec(key, results_tree)
-                outputs_to_be_merged.append(output)
+            branches_to_be_merged = [] # List to hold branches that will be merged
+            headers = self.output_format
+            # Loop through each branch in the results tree and find the samples for each key in the output format
+            for branch_key, branch  in results_tree.items():
+                samples_divided_by_node_to_be_merged = []
+                for header in headers[branch_key]:
+                    output = self.__find_result_from_header_rec(header, branch)
+                    samples_divided_by_node_to_be_merged.append(output)
+                
+                # Convert list of list into a list of tuples: LL: [[1,2,3],[4,5,6]] -> LT: [(1,4),(2,5),(3,6)]
+                merged_samples = list(zip(*samples_divided_by_node_to_be_merged))
+                branches_to_be_merged.append(merged_samples)
             
-        return list(zip(*outputs_to_be_merged))
+            # Merge all branches into a single list
+            # all_branches_merged_output = np.concatenate(branches_to_be_merged).tolist()
+            all_branches_merged_output = [inner for outer in branches_to_be_merged for inner in outer]
+            return all_branches_merged_output
     
-    def __find_result_from_key_rec(self, key, res_tree=None):
+    def __find_result_from_header_rec(self, key, res_tree=None):
         """Recursively searches for results in the results tree based on the key provided"""
         if res_tree is None:
             raise ValueError("res_tree must be provided when calling __find_result_from_key_rec")
@@ -71,7 +83,7 @@ class Generator:
                 results.extend(v["res"])
             elif isinstance(v, dict):
                 # Recursively search nested dictionaries
-                results.extend(self.__find_result_from_key_rec(key, v))
+                results.extend(self.__find_result_from_header_rec(key, v))
 
         return results
             
@@ -106,123 +118,3 @@ class Generator:
 
             # update results
             results_tree.update(sub_res_tree)
-
-
-
-if __name__ == "__main__":
-    
-    class NumberOfPatientsDistribution(Distribution):
-        def __init__(self):
-            super().__init__()
-            self.values = [2, 3, 4, 5]
-            self.probabilities = [0.1, 0.2, 0.3, 0.4]
-
-        def sample(self):
-            return int(np.random.choice(self.values, p=self.probabilities))
-
-    num_patients_dist: Distribution = NumberOfPatientsDistribution()
-
-    class MaleDiseasesDistribution(Distribution):
-        def __init__(self):
-            super().__init__()
-            self.values = ["Disease A", "Disease B", "Disease C", "Disease D"]
-            self.probabilities = [0.1, 0.2, 0.3, 0.4]
-
-        def sample(self):
-            return str(np.random.choice(self.values, p=self.probabilities))
-    
-    male_diseases_dist: Distribution = MaleDiseasesDistribution()
-
-    class FemaleDiseasesDistribution(Distribution):
-        def __init__(self):
-            super().__init__()
-            self.values = ["Disease F", "Disease G", "Disease H", "Disease I"]
-            self.probabilities = [0.4, 0.3, 0.2, 0.1]
-
-        def sample(self):
-            return str(np.random.choice(self.values, p=self.probabilities))
-
-    female_diseases_dist: Distribution = FemaleDiseasesDistribution()
-
-    class GenderDistribution(Distribution):
-        def __init__(self):
-            super().__init__()
-            self.values = ["male", "female"]
-            self.probabilities = [0.5, 0.5]
-
-        def sample(self):
-            return str(np.random.choice(self.values, p=self.probabilities))
-
-    gender_dist: Distribution = GenderDistribution()
-
-    DistributionTreeNoPatients = {
-        "number_of_patients": {
-            "dist": num_patients_dist,
-            "no_sample_aggregation": lambda x: x,
-            "gender": {
-                "dist": gender_dist,
-                "no_sample_aggregation": lambda x: x[0],
-                "disease": {
-                    "dist": {
-                        "male": male_diseases_dist,
-                        "female": female_diseases_dist
-                    },
-                    "no_sample_aggregation": len,
-                }
-        }
-        },
-    }
-
-    class NumberOfPatientsDuringADayDistribution(Distribution):
-        def __init__(self):
-            super().__init__()
-
-        def sample(self):
-            return int(np.random.normal(50, 10))
-
-    num_patients_per_day_dist: Distribution = NumberOfPatientsDuringADayDistribution()
-
-
-    from datetime import datetime, time
-    import random
-
-    class ArrivalTime(Distribution):
-        def __init__(self):
-            super().__init__()
-            self.intervals = [(8, 12), (12, 16), (16, 20), (20, 24)]
-            self.probabilities = [0.1, 0.3, 0.4, 0.2]
-
-        def sample(self) -> str:
-            start, end = random.choices(self.intervals, weights=self.probabilities, k=1)[0]
-            sampled = np.random.uniform(start, end)
-            h, rem = divmod(sampled * 3600, 3600)
-            m, s = divmod(rem, 60)
-            return time(int(h), int(m), int(s)).strftime("%H:%M:%S")
-        
-    arrival_time: Distribution = ArrivalTime()
-
-    DistributionTreeNoPatientsPrDay = {
-        "number_of_patients": {
-            "dist": num_patients_per_day_dist,
-            "no_sample_aggregation": lambda x: x,
-            "arrival_time": {
-                "dist": arrival_time,
-                "no_sample_aggregation": lambda x: x[0],
-            },
-            "gender": {
-                "dist": gender_dist,
-                "no_sample_aggregation": lambda x: x[0],
-                "disease": {
-                    "dist": {
-                        "male": male_diseases_dist,
-                        "female": female_diseases_dist
-                    },
-                    "no_sample_aggregation": len,
-                }
-        }
-        },
-    }
-
-    generator = Generator(DistributionTreeNoPatientsPrDay, ("arrival_time", "gender", "disease"), lambda tup: datetime.strptime(tup[0], "%H:%M:%S").time())
-    output = generator.generate_data()
-    print(output)
