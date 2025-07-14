@@ -12,7 +12,7 @@ class Distribution(ABC):
         pass
     
 
-class Generator:
+class TreeBasedGenerator:
     """Class used for generating synthetic data based on a user-defined tree-structure of probabilistic distributions
     
     :param distribution_tree: dictionary tree structure of distributions of the type Distribution
