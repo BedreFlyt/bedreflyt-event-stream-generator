@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from bisect import insort_right
-from time import time
 
 from numpy import random
 
@@ -15,13 +14,7 @@ class EventFrequency:
         """Samples from the sample space. Must be implemented in subclasses."""
         # Update time intervals if time is larger than largest number
         wrap_around_number = self.time_intervals[-1][1]
-        print(wrap_around_number)
-        if t > wrap_around_number: 
-            self.time_intervals = [(t1+wrap_around_number, t2+wrap_around_number) for t1, t2 in self.time_intervals]
-            print("---------------")
-            print(t)
-            print(self.time_intervals)
-            print("---------------") 
+        t = t%wrap_around_number
         
         # Find index in periods corresponding to time t
         try:
@@ -48,40 +41,33 @@ class TimeSeriesGenerator:
         self.clock = 0
         self.events_log = []
 
-    def run (self):
+    def run (self, stop_time):
         # Initialize
         future_events: list[tuple[float, tuple[EventFrequency, EventSampleSpace]]] = []
         for event in self.events:
             event_F, _ = event
             insort_right(future_events, (abs(event_F.sample(0)), event))
         
-        start_s = time()
         # Loop through events (foreverrrr)
         while True:
             # Retrieve
-            print(f"future events pre pop: {future_events}")
+            timed_event = future_events.pop(0)
+            t, event = timed_event
+            event_F, event_SS = event
 
-            event = future_events.pop(0)
-
-            print(f"event: {event}")
-            print(f"future events post pop: {future_events}")
-            t, (event_F, event_SS) = event
-            
             # Update simulation clock
             self.clock = t
 
             # Sample
-            # print(event_SS)
             sample = event_SS.sample(self.clock)
             result = (self.clock, sample)
             
             # Log
             self.events_log.append(result)
-            # print(result)
             self.on_event(result)
 
             # Add future event
-            insort_right(future_events, (self.clock + event_F.sample(self.clock), (event_F, event_SS)))
+            insort_right(future_events, (self.clock + abs(event_F.sample(self.clock)), event))
 
-            if (time() - start_s > 10): break
+            if (self.clock > stop_time): break
     
