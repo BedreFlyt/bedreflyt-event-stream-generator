@@ -1,52 +1,50 @@
 from abc import ABC, abstractmethod
 from bisect import insort_right
 import numpy as np
-from numpy import random
-from utils import get_index_in_time_intervals
 
-class EventTimestampGenerator:
+class EventTimestampGenerator(ABC):
     def __init__(self, occurrences, time_intervals):
         self.occurrences = occurrences
         self.time_intervals = time_intervals
-        self.periods = [(t2 - t1)/o for (t1, t2), o in zip(self.time_intervals, self.occurrences)]
-        self.spacings = [(t2-t1) / (o+1) for (t1, t2), o in zip(self.time_intervals, self.occurrences)]
         self.timestamps = []
         self.occurrence_counter = 0
         self.current_interval = 0
         self.timestamp = 0
+
+        # Initialize and update right after
+        self.sampled_occurrences = self.__get_sampled_occurrences()
+        self.spacings = self.__calculate_spacings()
     
-    def __get_wrap_around_time(self, t) -> float:
-        """Wraps around time t if it exceeds the wrap around number. Protected method."""
-        wrap_around_number = self.time_intervals[-1][1]
-        wrap_around_time = t % wrap_around_number if t >= wrap_around_number else t
-        return wrap_around_time
+
+    def __sample_occurrences_and_calculate_new_spacings(self) -> None:
+        """Resamples occurrences and calculates corresponding spacings. 
+        
+        :returns: None. Modifies class properties, returns nothing.""" 
+        self.sampled_occurrences = self.__get_sampled_occurrences()
+        self.spacings = self.__calculate_spacings()
+
+    def __get_sampled_occurrences(self) -> list[int]:
+        """Samples occurrences.
+        
+        :returns: A list of the sampled occurrences in each interval"""
+        return [self.sample_occurrences(self.occurrences[i], i) for i in range(len(self.occurrences))]
     
-    def _find_interval_including_start(self, t) -> int:
-        """Finds the index in time intervals corresponding to time t. Protected method."""
-        try:
-            index = next(i for i, (t1, t2) in enumerate(self.time_intervals) if t1 <= self.__get_wrap_around_time(t) < t2)
-        except StopIteration:
-            raise ValueError(f"Time t={t} is not within any defined time interval.")
-        return index
-    
-    def _find_interval_including_end(self, t) -> int:
-        """Finds the index in time intervals corresponding to time t. Protected method."""
-        try:
-            index = next(i for i, (t1, t2) in enumerate(self.time_intervals) if t1 < self.__get_wrap_around_time(t) <= t2)
-        except StopIteration:
-            raise ValueError(f"Time t={t} is not within any defined time interval.")
-        return index
-    
+    def __calculate_spacings(self) -> list[int]:
+        """Calculates spacings.
+        
+        :returns: A list of the calculated spacings corresponding to each interval"""
+        return [(t2-t1) / (o+1) for (t1, t2), o in zip(self.time_intervals, self.sampled_occurrences)]
     
     def get_new_timestamp(self) -> float:
         """Calculates a new timestamp"""
         # Check if occurrences in interval have been met and updates accordingly
-        if self.occurrence_counter == self.occurrences[self.current_interval]:
+        if self.occurrence_counter == self.sampled_occurrences[self.current_interval]:
             self.occurrence_counter = 0
             # Check if interval is about to overflow
             if self.current_interval+1 == len(self.occurrences):
                 self.current_interval = 0
-                self.update_intervals()
+                self.__update_intervals()
+                self.__sample_occurrences_and_calculate_new_spacings()
             else:
                 self.current_interval += 1 
             
@@ -61,7 +59,7 @@ class EventTimestampGenerator:
 
         return self.timestamp
         
-    def update_intervals (self):
+    def __update_intervals (self):
         """Updates the intervals to match increasing time"""
         upper_boundary = self.time_intervals[-1][1]
         new_intervals = []
@@ -73,10 +71,15 @@ class EventTimestampGenerator:
     
     @abstractmethod
     def sample_noise (self, i):
-        """Samples from the temporal distribution. Must be implemented in subclasses."""
+        """Samples noise in i'th interval. Must be implemented in subclasses."""
         pass
 
-class EventSampleSpace:
+    @abstractmethod
+    def sample_occurrences (self, occurrences_i, i):
+        """Samples occurrences in i'th interval given the number of occurrences in the i'th interval. Must be implemented in subclasses."""
+        pass
+
+class EventSampleSpace(ABC):
     def __init__(self):
         pass
 

@@ -13,3 +13,6 @@ def get_index_in_time_intervals(time_intervals, t):
         return next(i for i, (t1, t2) in enumerate(time_intervals) if t1 < t <= t2)
     except StopIteration:
         raise ValueError(f"Time t={t} is not within any defined time interval.")
+    
+
+
