@@ -1,18 +1,23 @@
-def normalise_time(t: float, time_intervals: list[tuple[float, float]]) -> float:
-    """Normalises time t to the first interval in time_intervals."""
-    wrap_around_number = time_intervals[-1][1]
-    if t >= wrap_around_number:
-        t = t%wrap_around_number
-    return t
+import logging
 
+logger = logging.getLogger(__name__)
 
-def get_index_in_time_intervals(time_intervals, t):
-    """Finds the index in time_intervals corresponding to time t."""
-    t = normalise_time(t, time_intervals)
-    try:
-        return next(i for i, (t1, t2) in enumerate(time_intervals) if t1 < t <= t2)
-    except StopIteration:
-        raise ValueError(f"Time t={t} is not within any defined time interval.")
-    
+def validate_wrt_constraints(state: dict, constraints: set, value_generator):
+    while True:
+        value = value_generator()
+        satisfied = True
+        logger.debug(f"Checks if constraint is satisfied with value: {value}")
+        for constraint in constraints:
+            if not constraint(state, value): 
+                satisfied = False
+                logger.debug("Constraint not satisfied")
+                break
+        if satisfied: 
+            logger.debug("Constraint satisfied")
+            return value
+        else: satisfied = True
 
-
+# def validate_wrt_constraints(state, constraints, value):
+#     for constraint in constraints:
+#         if not constraint(state, value): return False
+#     return True
