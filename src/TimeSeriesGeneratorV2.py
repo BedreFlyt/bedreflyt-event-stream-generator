@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from bisect import insort_right
 import numpy as np
-from time import sleep
+from time import sleep, time
 import logging
 
 from utils import validate_wrt_constraints
@@ -152,7 +152,7 @@ class TimeSeriesGenerator:
             event_tg, _ = event
             insort_right(future_events, (event_tg.get_new_timestamp(), event))
         
-        last_t = 0
+        start_time = time()
         # Loop through events
         while True:
             # Retrieve
@@ -161,13 +161,17 @@ class TimeSeriesGenerator:
             event_tg, event_SS = event
 
             if (t >= stop_time): 
+                logger.debug(f"Total time: {time()-start_time}s")
                 return self.events_log 
             
-            if (real_time):
-                ahead_of_time = t-last_t 
-                logger.debug(f"{ahead_of_time} s ahead of time - sleeping.")
-                sleep(ahead_of_time)
-                last_t = t
+            # Real-time sleep
+            sleep_init_logged = False
+            while real_time:
+                current_time = time() - start_time
+                if current_time >= t: break
+                elif not sleep_init_logged:
+                    logger.debug(f"Waiting {t-current_time} seconds.")
+                    sleep_init_logged = True
 
             # Sample
             sample = event_SS.sample(t)
