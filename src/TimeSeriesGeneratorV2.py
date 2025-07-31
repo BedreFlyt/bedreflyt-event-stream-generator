@@ -3,7 +3,7 @@ from bisect import insort_right
 import numpy as np
 from time import sleep, time
 import logging
-from typing import Any
+from typing import Any, Callable, Set
 
 from utils import validate_wrt_constraints
 
@@ -12,11 +12,22 @@ from utils import validate_wrt_constraints
 logger = logging.getLogger(__name__)
 
 class EventTimestampGenerator(ABC):
-    """TBD"""
+    """
+    Class that generates event timestamps based on a frequency distribution, that might be randomized, stochastic noise and constraints.
+    
+    :param occurrences: number of occurrences of the event inside the various time-intervals.
+    :type occurrences: list[int]
+    :param time_intervals: time intervals in which the events occur, as a list of tuples (start, end).
+    :type time_intervals: list[tuple[float, float]]
+    :param timestamp_constraints: constraints on the timestamps, as a list of functions that take the current state and a timestamp and return True if the timestamp is valid.
+    :type timestamp_constraints: set[callable]
+    :param occurrences_constraints: constraints on the occurrences, as a list of functions that take the current state and an occurrence count and return True if the occurrence count is valid.
+    :type occurrences_constraints: set[callable]
+    """
     def __init__(self, 
-                 occurrences, 
-                 time_intervals, 
-                 timestamp_constraints={
+                 occurrences: list[int], 
+                 time_intervals: list[tuple[float, float]],
+                 timestamp_constraints: Set[Callable[[dict, Any], bool]]={
                      # Every timestamp must be non-negative
                      lambda state, ts: ts > 0, 
                      # Every timestamp must be greater than the prior expect for the first datapoint
@@ -24,7 +35,7 @@ class EventTimestampGenerator(ABC):
                      # Prohibits timestamps from entering other intervals
                      lambda state, ts: state["time_intervals"][state["current_interval"]][0] <= ts < state["time_intervals"][state["current_interval"]][1]
                 }, 
-                 occurrences_constraints={
+                 occurrences_constraints: Set[Callable[[dict, Any], bool]]={
                      lambda state, o: o >= 0
                  }):
         self.occurrences = occurrences
@@ -140,7 +151,7 @@ class EventTimestampGenerator(ABC):
 
 class EventSampleSpace(ABC):
     """TBD"""
-    def __init__(self, constraints=None):
+    def __init__(self, constraints={}):
         self.constraints = constraints
 
     def get_sample(self, t: float) -> Any:
@@ -165,7 +176,7 @@ class TimeSeriesGenerator:
         self.clock = 0
         self.events_log = []
 
-    def run (self, stop_time, real_time=False):
+    def run (self, stop_time, time_scale:None|float=None):
         # Initialize
         future_events: list[tuple[float, tuple[EventTimestampGenerator, EventSampleSpace]]] = []
 
@@ -187,15 +198,15 @@ class TimeSeriesGenerator:
             
             # Real-time sleep
             sleep_init_logged = False
-            while real_time:
-                current_time = time() - start_time
+            while time_scale != None:
+                current_time = (time() - start_time)*time_scale
                 if current_time >= t: break
                 elif not sleep_init_logged:
                     logger.debug(f"Waiting {t-current_time} seconds.")
                     sleep_init_logged = True
 
             # Sample
-            sample = event_SS.sample(t)
+            sample = event_SS.get_sample(t)
             result = (t, sample)
             
             # Log
