@@ -20,7 +20,7 @@ class EventTimestampGenerator(ABC):
                      # Every timestamp must be greater than the prior expect for the first datapoint
                      lambda state, ts: ts > state["timestamps"][-1] if (len(state["timestamps"])) != 0 else True,
                      # Prohibits timestamps from entering other intervals
-                     lambda state, ts: state["time_intervals"][state["current_interval"]][0] < ts < state["time_intervals"][state["current_interval"]][1]
+                     lambda state, ts: state["time_intervals"][state["current_interval"]][0] <= ts < state["time_intervals"][state["current_interval"]][1]
                 }, 
                  occurrences_constraints={
                      lambda state, o: o >= 0
@@ -93,10 +93,12 @@ class EventTimestampGenerator(ABC):
             self.occurrence_counter = 0
             self.__move_to_next_interval()
             self.__advance_to_next_nonempty_interval()
-            self.timestamp = self.time_intervals[self.current_interval][0]
         
-        # Compute new timestamp
-        timestamp_generator = lambda: self.timestamp + self.spacings[self.current_interval] + self.sample_noise(self.current_interval)
+        # Derive timestamp generator function
+        current_interval_lower_bound = self.time_intervals[self.current_interval][0]
+        ideal_position = current_interval_lower_bound + self.spacings[self.current_interval]*(self.occurrence_counter+1)
+        timestamp_generator = lambda: ideal_position + self.sample_noise(self.current_interval)
+        # Generate new timestamp wrt constraints using generator
         new_timestamp = validate_wrt_constraints(vars(self), self.timestamp_constraints, timestamp_generator)
         self.timestamp = new_timestamp
         self.timestamps.append(self.timestamp)

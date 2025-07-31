@@ -17,7 +17,3 @@ def validate_wrt_constraints(state: dict, constraints: set, value_generator):
             return value
         else: satisfied = True
 
-# def validate_wrt_constraints(state, constraints, value):
-#     for constraint in constraints:
-#         if not constraint(state, value): return False
-#     return True
