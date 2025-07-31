@@ -3,6 +3,7 @@ from bisect import insort_right
 import numpy as np
 from time import sleep, time
 import logging
+from typing import Any
 
 from utils import validate_wrt_constraints
 
@@ -11,6 +12,7 @@ from utils import validate_wrt_constraints
 logger = logging.getLogger(__name__)
 
 class EventTimestampGenerator(ABC):
+    """TBD"""
     def __init__(self, 
                  occurrences, 
                  time_intervals, 
@@ -108,7 +110,7 @@ class EventTimestampGenerator(ABC):
 
         return self.timestamp
 
-    def __update_intervals (self):
+    def __update_intervals (self) -> None:
         """Updates the intervals to match increasing time"""
         upper_boundary = self.time_intervals[-1][1]
         new_intervals = []
@@ -121,25 +123,42 @@ class EventTimestampGenerator(ABC):
     
     @abstractmethod
     def sample_noise (self, i) -> float:
-        """Samples noise in i'th interval. Must be implemented in subclasses."""
+        """Samples noise in i'th interval. Must be implemented in subclasses.
+        
+        :param i: index of interval
+        """
         pass
 
     @abstractmethod
     def sample_occurrences (self, occurrences_i: float, i: int) -> int:
-        """Samples occurrences in i'th interval given the number of occurrences in the i'th interval. Must be implemented in subclasses."""
+        """Samples occurrences in i'th interval given the number of occurrences in the i'th interval. Must be implemented in subclasses.
+        
+        :param occurrences_i: occurrences in i'th interval.
+        :param i: index i
+        """
         pass
 
 class EventSampleSpace(ABC):
+    """TBD"""
     def __init__(self, constraints=None):
-        pass
+        self.constraints = constraints
+
+    def get_sample(self, t: float) -> Any:
+        """Retrieves a sample valid w.r.t. constraints"""
+        return validate_wrt_constraints(vars(self), self.constraints, lambda: self.sample(t))
 
     @abstractmethod
-    def sample (self, t):
+    def sample (self, t: float) -> Any:
         """Samples from the sample space. Must be implemented in subclasses."""
         pass
 
 
 class TimeSeriesGenerator:
+    """Generates time series events.
+
+    :param events: the events as a list of tuples including an instances of EventTimestampGenerator and EventSampleSpace.
+    :param on_event: event callback invoked with event time and event result when an event is occurring.
+    """
     def __init__(self, events: list[tuple[EventTimestampGenerator, EventSampleSpace]], on_event):
         self.events = set(events)
         self.on_event = on_event
