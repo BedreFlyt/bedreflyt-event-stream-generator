@@ -137,8 +137,9 @@ class EventTimestampGenerator(ABC):
         """Samples noise in i'th interval. Must be implemented in subclasses.
         
         :param i: index of interval
+        :returns: A float representing the noise in the i'th interval. Defaults to 0 if not implemented.
         """
-        pass
+        return 0.0
 
     @abstractmethod
     def sample_occurrences (self, occurrences_i: float, i: int) -> int:
@@ -146,8 +147,10 @@ class EventTimestampGenerator(ABC):
         
         :param occurrences_i: occurrences in i'th interval.
         :param i: index i
+        :returns: A sampled number of occurrences in the i'th interval.
+        Defaults to the expected number of occurrences if not implemented.
         """
-        pass
+        return occurrences_i
 
 class EventSampleSpace(ABC):
     """TBD"""
@@ -164,7 +167,7 @@ class EventSampleSpace(ABC):
         pass
 
 
-class TimeSeriesGenerator:
+class EventStreamGenerator:
     """Generates time series events.
 
     :param events: the events as a list of tuples including an instances of EventTimestampGenerator and EventSampleSpace.
@@ -264,6 +267,6 @@ if __name__ == "__main__":
         print(f"event: {event}")
         print("--------")
 
-    time_series_generator = TimeSeriesGenerator([(etg, ess)], on_event)
+    time_series_generator = EventTimestampGenerator([(etg, ess)], on_event)
     data = time_series_generator.run(cycles*N, real_time=True)
     print("Generated data:", data)
