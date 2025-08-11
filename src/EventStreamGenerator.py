@@ -5,7 +5,7 @@ from time import sleep, time
 import logging
 from typing import Any, Callable, Set
 
-from utils import validate_wrt_constraints
+from utils import validate_wrt_constraints, DEFAULT_CONSTRAINTS
 
 
 # Create a module‑level logger
@@ -27,25 +27,18 @@ class EventTimestampGenerator(ABC):
     def __init__(self, 
                  occurrences: list[int], 
                  time_intervals: list[tuple[float, float]],
-                 timestamp_constraints: Set[Callable[[dict, Any], bool]]={
-                     # Every timestamp must be non-negative
-                     lambda state, ts: ts > 0, 
-                     # Every timestamp must be greater than the prior expect for the first datapoint
-                     lambda state, ts: ts > state["timestamps"][-1] if (len(state["timestamps"])) != 0 else True,
-                     # Prohibits timestamps from entering other intervals
-                     lambda state, ts: state["time_intervals"][state["current_interval"]][0] <= ts < state["time_intervals"][state["current_interval"]][1]
-                }, 
-                 occurrences_constraints: Set[Callable[[dict, Any], bool]]={
-                     lambda state, o: o >= 0
-                 }):
+                 timestamp_constraints: Set[Callable[[dict, Any], bool]] = {},
+                 occurrences_constraints: Set[Callable[[dict, Any], bool]] = {},
+                 use_default_constraints: bool = False
+                 ):
         self.occurrences = occurrences
         self.time_intervals = time_intervals
         self.timestamps = []
         self.occurrence_counter = 0
         self.current_interval = 0
         self.timestamp = 0
-        self.timestamp_constraints = timestamp_constraints
-        self.occurrences_constraints = occurrences_constraints
+        self.timestamp_constraints = timestamp_constraints if not use_default_constraints else DEFAULT_CONSTRAINTS.timestamp
+        self.occurrences_constraints = occurrences_constraints if not use_default_constraints else DEFAULT_CONSTRAINTS.occurrences
 
         # Initialize and update right after
         self.sampled_occurrences = self.__get_sampled_occurrences()
