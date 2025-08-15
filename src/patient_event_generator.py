@@ -1,14 +1,14 @@
-from EventStreamGenerator import EventStreamGenerator, EventSampleSpace
+from EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
 from typing import List, Tuple, Dict
 import numpy as np
 
-class PatientDiagnosisEventGenerator(EventStreamGenerator):
+class PatientDiagnosisEventGenerator(EventTimestampGenerator):
     """
     Generates synthetic patient diagnosis events.
     """
 
     def __init__ (self,
-                  occurrences: List[str],
+                  occurrences: List[int],
                   time_intervals: List[Tuple[int, int]],
                   noise_sds: List[float] = None,
                   occurrences_sds: List[float] = None
