@@ -19,6 +19,8 @@ class EventTimestampGenerator(ABC):
     :type occurrences: list[int]
     :param time_intervals: time intervals in which the events occur, as a list of tuples (start, end).
     :type time_intervals: list[tuple[float, float]]
+    :param multi_sampling_divider_generator: a function that generates the a multi_sample_divider (MSD) dynamically. The number of samples during each event iteration is determined from this as occurrences[i] / MSD(state) for each interval i.
+    :type multi_sampling_divider_generator: Callable | None
     :param timestamp_constraints: constraints on the timestamps, as a list of functions that take the current state and a timestamp and return True if the timestamp is valid.
     :type timestamp_constraints: set[callable]
     :param occurrences_constraints: constraints on the occurrences, as a list of functions that take the current state and an occurrence count and return True if the occurrence count is valid.
@@ -29,20 +31,25 @@ class EventTimestampGenerator(ABC):
                  time_intervals: list[tuple[float, float]],
                  timestamp_constraints: Set[Callable[[dict, Any], bool]] = {},
                  occurrences_constraints: Set[Callable[[dict, Any], bool]] = {},
-                 use_default_constraints: bool = False
+                 use_default_constraints: bool = False,
+                 no_multi_samples_generator: Callable[[dict], int] | None = None,
                  ):
         self.occurrences = occurrences
         self.time_intervals = time_intervals
-        self.timestamps = []
-        self.occurrence_counter = 0
-        self.current_interval = 0
-        self.timestamp = 0
+        self.timestamps: list[float] = []
+        self.occurrence_counter: int = 0
+        self.current_interval: int = 0
+        self.timestamp: float = 0
+        self.multi_sample_counter: int = 0
         self.timestamp_constraints = timestamp_constraints if not use_default_constraints else DEFAULT_CONSTRAINTS.timestamp
         self.occurrences_constraints = occurrences_constraints if not use_default_constraints else DEFAULT_CONSTRAINTS.occurrences
+        self.no_multi_samples_generator = no_multi_samples_generator if no_multi_samples_generator != None else (lambda state: state["sampled_occurrences"][state["current_interval"]])
 
         # Initialize and update right after
-        self.sampled_occurrences = self.__get_sampled_occurrences()
-        self.spacings = self.__calculate_spacings()
+        self.sampled_occurrences = []
+        self.spacings = []
+        self.samples_per_multi_sample_list: list[int] = []
+        self.__sample_and_compute_state_on_new_interval()
         
 
     def set_timestamp_constraints (self, constraints) -> None:
@@ -53,12 +60,13 @@ class EventTimestampGenerator(ABC):
         """Sets occurrences constraints. To extend constraints, retrieve a copy of current constraints, extend that and then set it here."""
         self.occurrences_constraints = constraints
 
-    def __sample_occurrences_and_calculate_new_spacings(self) -> None:
+    def __sample_and_compute_state_on_new_interval(self) -> None:
         """Resamples occurrences and calculates corresponding spacings. 
         
         :returns: None. Modifies class properties, returns nothing.""" 
         self.sampled_occurrences = self.__get_sampled_occurrences()
         self.spacings = self.__calculate_spacings()
+        self.samples_per_multi_sample_list = self.__calculate_multi_sample_numbers()
 
     def __get_sampled_occurrences(self) -> list[int]:
         """Samples occurrences.
@@ -81,12 +89,13 @@ class EventTimestampGenerator(ABC):
     
     def __move_to_next_interval(self) -> None:
         """Moves to the next interval, wrapping and resampling if needed."""
-        if self.current_interval+1 == len(self.occurrences):
+        if self.current_interval+1 == len(self.time_intervals):
             self.current_interval = 0
             self.__update_intervals()
-            self.__sample_occurrences_and_calculate_new_spacings()
+            self.__sample_and_compute_state_on_new_interval()
         else:
             self.current_interval += 1 
+            self.samples_per_multi_sample_list = self.__calculate_multi_sample_numbers()
     
     def __advance_to_next_nonempty_interval(self) -> None:
         """Keeps moving to the next interval until occurrences > 0."""
@@ -104,6 +113,7 @@ class EventTimestampGenerator(ABC):
         current_interval_lower_bound = self.time_intervals[self.current_interval][0]
         ideal_position = current_interval_lower_bound + self.spacings[self.current_interval]*(self.occurrence_counter+1)
         timestamp_generator = lambda: ideal_position + self.sample_noise(self.current_interval)
+        
         # Generate new timestamp wrt constraints using generator
         new_timestamp = validate_wrt_constraints(vars(self), self.timestamp_constraints, timestamp_generator)
         self.timestamp = new_timestamp
@@ -113,6 +123,43 @@ class EventTimestampGenerator(ABC):
         self.occurrence_counter += 1
 
         return self.timestamp
+    
+    def get_new_timestamps(self) -> list[float]:
+        """Calculates new timestamps"""
+        # Do multi-sample
+        logger.debug(f"counter: {self.multi_sample_counter}")
+        logger.debug(f"list: {self.samples_per_multi_sample_list}")
+        multi_samples_todo = self.samples_per_multi_sample_list[self.multi_sample_counter]
+        timestamps: list[float] = []
+        for _ in range(multi_samples_todo):
+            insort_right(timestamps, self.get_new_timestamp())
+        
+        # Update counter
+        if (self.multi_sample_counter+1 == len(self.samples_per_multi_sample_list)): 
+            self.multi_sample_counter = 0
+        else: 
+            self.multi_sample_counter += 1
+
+        # Return multi-sample timestamps
+        return timestamps
+    
+    def __calculate_multi_sample_numbers(self) -> list[int]:
+        """Calculates the number of samples done in each multi-sample"""
+        no_multi_samples_in_interval = self.no_multi_samples_generator(vars(self))
+        occurrences_in_interval = self.sampled_occurrences[self.current_interval]
+        samples_per_multi_sample = int(np.floor(occurrences_in_interval/no_multi_samples_in_interval))
+        rest = int(occurrences_in_interval%no_multi_samples_in_interval)
+
+        SpMSL = [] # Samples pr multi sample list
+        for i in range(no_multi_samples_in_interval):
+            if i != no_multi_samples_in_interval-1:
+                SpMSL.append(samples_per_multi_sample)
+            else:
+                SpMSL.append(samples_per_multi_sample+rest)
+        
+        logger.debug(f"New multi sample list: {SpMSL}")
+        return SpMSL
+
 
     def __update_intervals (self) -> None:
         """Updates the intervals to match increasing time"""
@@ -178,7 +225,8 @@ class EventStreamGenerator:
 
         for event in self.events:
             event_tg, _ = event
-            insort_right(future_events, (event_tg.get_new_timestamp(), event))
+            future_events += [(ts, event) for ts in event_tg.get_new_timestamps()]
+            future_events.sort()
         
         start_time = time()
         # Loop through events
@@ -210,7 +258,8 @@ class EventStreamGenerator:
             self.on_event(result)
 
             # Add future event
-            insort_right(future_events, (event_tg.get_new_timestamp(), event))
+            future_events += [(ts, event) for ts in event_tg.get_new_timestamps()]
+            future_events.sort()
 
 
             
