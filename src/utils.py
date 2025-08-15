@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Set
+from time import sleep
 
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ def validate_wrt_constraints(state: dict, constraints: set, value_generator):
             if not constraint(state, value): 
                 satisfied = False
                 logger.debug("Constraint not satisfied")
+                sleep(0.01)
                 break
         if satisfied: 
             logger.debug("Constraint satisfied")
