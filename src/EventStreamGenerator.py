@@ -146,6 +146,8 @@ class EventTimestampGenerator(ABC):
     def __calculate_multi_sample_numbers(self) -> list[int]:
         """Calculates the number of samples done in each multi-sample"""
         no_multi_samples_in_interval = self.no_multi_samples_generator(vars(self))
+        if no_multi_samples_in_interval == 0: return
+        
         occurrences_in_interval = self.sampled_occurrences[self.current_interval]
         samples_per_multi_sample = int(np.floor(occurrences_in_interval/no_multi_samples_in_interval))
         rest = int(occurrences_in_interval%no_multi_samples_in_interval)
