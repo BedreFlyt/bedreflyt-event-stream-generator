@@ -3,6 +3,7 @@
 - [About This Project](#about-this-project)
 - [Prerequisites](#prerequisites)
 - [➡️ How To Get Started ⬅️](#️-how-to-get-started-️)
+  - [System Setup](#system-setup)
 - [Project Structure](#project-structure)
 - [Repository Maintenance](#repository-maintenance)
 
@@ -17,7 +18,10 @@ It is recommended that you are familiar with:
 # ➡️ How To Get Started ⬅️
 All learning resources are located in the documentations folder [docs](/docs).
 - If you are interested in knowing about the internal workings of the generator, go through the documents in [design_and_architecture](docs/design_and_architecture)
-- To learn about how to use the tool, go through the examples in the [examples](/docs/examples), from top to bottom. 
+- To learn about how to use the tool, go through the examples in the [examples](/docs/examples), from top to bottom. To run the examples, make sure to have setup your system in accordance with the system setup instructions below.
+## System Setup
+- You are advised to run the code in a virtual environment like conda or venv
+- To enable imports across the project and install the required dependencies open a terminal in root and run `pip install -e.`
 # Project Structure
 ```
 📦UIO-DT-Synthetic-Data-Generator
