@@ -1,8 +1,8 @@
 from EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Set, Callable, Any
 import numpy as np
 
-class PatientDiagnosisEventGenerator(EventTimestampGenerator):
+class PatientDiagnosisETG(EventTimestampGenerator):
     """
     Generates synthetic patient diagnosis events.
     """
@@ -11,12 +11,24 @@ class PatientDiagnosisEventGenerator(EventTimestampGenerator):
                   occurrences: List[int],
                   time_intervals: List[Tuple[int, int]],
                   noise_sds: List[float] = None,
-                  occurrences_sds: List[float] = None
+                  occurrences_sds: List[float] = None,
+                  timestamp_constraints: Set[Callable[[dict, Any], bool]]={
+                     # Every timestamp (ts) must be non-negative
+                     lambda state, ts: ts > 0, 
+                     # Every timestamp (ts) must be greater than the prior expect for the first datapoint
+                     lambda state, ts: ts > state["timestamps"][-1] if (len(state["timestamps"])) != 0 else True,
+                     # Every timestamp (ts) must be within its own interval
+                     lambda state, ts: state["time_intervals"][state["current_interval"]][0] <= ts < state["time_intervals"][state["current_interval"]][1]
+                    },
+                  occurrences_constraints: Set[Callable[[dict, Any], bool]]={
+                        # The number of occurrences must be non-negative
+                        lambda state, o: o >= 0
+                    }
                  ) -> None:
         self.noise_sds = noise_sds or [0] * len(time_intervals)
         self.occurrences_sds = occurrences_sds or [0] * len(occurrences)
 
-        super().__init__(occurrences, time_intervals)
+        super().__init__(occurrences, time_intervals, timestamp_constraints, occurrences_constraints)
 
     def sample_noise (self, index: int) -> float:
         """
