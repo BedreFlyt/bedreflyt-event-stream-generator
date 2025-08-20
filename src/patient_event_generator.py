@@ -1,5 +1,6 @@
 from EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
 from typing import List, Tuple, Dict, Set, Callable, Any
+from type.api_types import Diagnosis, Treatment
 import numpy as np
 
 class PatientDiagnosisETG(EventTimestampGenerator):
@@ -56,24 +57,196 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
     """
     def __init__(self,
                  patient_ids: List[str]=None,
-                 diagnosis_codes: List[str]=None) -> None:
+                 diagnosis_codes: List[Diagnosis]=None,
+                 treatments: List[Treatment]=None) -> None:
         super().__init__()
 
         self.patient_ids = patient_ids or [f"P{i}" for i in range(100)]
 
         # Hardcoded from the current implementation of Bedreflyt for testing purposes
         self.diagnosis_codes = diagnosis_codes or [
-            "G91.2", # Normaltrykkshydrocephalus
-            "C71.2", # Ondartet svulst i tinninglapp
-            "C71.3", # Ondartet svulst i isselapp
-            "M50.0", # Lidelse i cervikalskive, med myelopati
-            "M50.1", # Lidelse i cervikalskive, med radikulopati
-            "S06.5", # Traumatisk eller uspesifisert subduralblødning
-            "G50.0", # Trigeminusnevralgi
-            "I67.1", # Hjerneaneurisme uten ruptur
-            "I60.0", # Subaraknoidalblødning fra carotissifong eller carotisbifurkatur
-            "I60.1" # Subaraknoidalblødning fra arteria cerebri media
+            Diagnosis("G91.2"), # Normaltrykkshydrocephalus
+            Diagnosis("C71.2"), # Ondartet svulst i tinninglapp
+            Diagnosis("C71.3"), # Ondartet svulst i isselapp
+            Diagnosis("M50.0"), # Lidelse i cervikalskive, med myelopati
+            Diagnosis("M50.1"), # Lidelse i cervikalskive, med radikulopati
+            Diagnosis("S06.5"), # Traumatisk eller uspesifisert subduralblødning
+            Diagnosis("G50.0"), # Trigeminusnevralgi
+            Diagnosis("I67.1"), # Hjerneaneurisme uten ruptur
+            Diagnosis("I60.0"), # Subaraknoidalblødning fra carotissifong eller carotisbifurkatur
+            Diagnosis("I60.1") # Subaraknoidalblødning fra arteria cerebri media
         ]
+
+        # Create sample treatments for each diagnosis code if treatments is None
+        if treatments is None:
+            self.treatments = [
+                Treatment(
+                    treatment_name="Surgical Drainage",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[0],  # G91.2
+                    frequency=70.0,
+                    weight=0.8,
+                    first_task_name="Pre-surgical Assessment",
+                    last_task_name="Post-operative Care"
+                ),
+                Treatment(
+                    treatment_name="Non Surgical Drainage",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[0],  # G91.2
+                    frequency=30.0,
+                    weight=0.8,
+                    first_task_name="Pre-surgical Assessment",
+                    last_task_name="Post-operative Care"
+                ),
+                Treatment(
+                    treatment_name="Tumor Resection",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[1],  # C71.2
+                    frequency=10.0,
+                    weight=0.9,
+                    first_task_name="Pre-operative Planning",
+                    last_task_name="Recovery Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Tumor Analysis",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[1],  # C71.2
+                    frequency=1.0,
+                    weight=0.9,
+                    first_task_name="Pre-operative Planning",
+                    last_task_name="Recovery Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Stereotactic Surgery",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[2],  # C71.3
+                    frequency=90.0,
+                    weight=0.85,
+                    first_task_name="Imaging Studies",
+                    last_task_name="Follow-up Assessment"
+                ),
+                Treatment(
+                    treatment_name="Cervical Fusion",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[3],  # M50.0
+                    frequency=40.0,
+                    weight=0.7,
+                    first_task_name="Spinal Assessment",
+                    last_task_name="Rehabilitation"
+                ),
+                Treatment(
+                    treatment_name="Cervical Fission",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[3],  # M50.0
+                    frequency=60.0,
+                    weight=0.7,
+                    first_task_name="Spinal Assessment",
+                    last_task_name="Rehabilitation"
+                ),
+                Treatment(
+                    treatment_name="Decompression Surgery",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[4],  # M50.1
+                    frequency=19.0,
+                    weight=0.75,
+                    first_task_name="Neurological Evaluation",
+                    last_task_name="Physical Therapy"
+                ),
+                Treatment(
+                    treatment_name="Decompression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[4],  # M50.1
+                    frequency=81.0,
+                    weight=0.75,
+                    first_task_name="Neurological Evaluation",
+                    last_task_name="Physical Therapy"
+                ),
+                Treatment(
+                    treatment_name="Craniotomy",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[5],  # S06.5
+                    frequency=20.0,
+                    weight=0.95,
+                    first_task_name="Emergency Assessment",
+                    last_task_name="Intensive Care"
+                ),
+                Treatment(
+                    treatment_name="Craniotomy Check",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[5],  # S06.5
+                    frequency=80.0,
+                    weight=0.95,
+                    first_task_name="Emergency Assessment",
+                    last_task_name="Intensive Care"
+                ),
+                Treatment(
+                    treatment_name="Microvascular Decompression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[6],  # G50.0
+                    frequency=95.0,
+                    weight=0.8,
+                    first_task_name="Pain Assessment",
+                    last_task_name="Pain Management"
+                ),
+                Treatment(
+                    treatment_name="Microvascular Compression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[6],  # G50.0
+                    frequency=5.0,
+                    weight=0.8,
+                    first_task_name="Pain Assessment",
+                    last_task_name="Pain Management"
+                ),
+                Treatment(
+                    treatment_name="Aneurysm Clipping",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[7],  # I67.1
+                    frequency=50.0,
+                    weight=0.9,
+                    first_task_name="Vascular Imaging",
+                    last_task_name="Neurological Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Aneurysm MRI",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[7],  # I67.1
+                    frequency=50.0,
+                    weight=0.9,
+                    first_task_name="Vascular Imaging",
+                    last_task_name="Neurological Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Endovascular Coiling",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[8],  # I60.0
+                    frequency=70.0,
+                    weight=0.85,
+                    first_task_name="Angiography",
+                    last_task_name="ICU Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Endovascular Clamp",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[8],  # I60.0
+                    frequency=30.0,
+                    weight=0.85,
+                    first_task_name="Angiography",
+                    last_task_name="ICU Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Surgical Clipping",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[9],  # I60.1
+                    frequency=100.0,
+                    weight=0.9,
+                    first_task_name="Emergency Surgery",
+                    last_task_name="Critical Care"
+                )
+            ]
+        else:
+            self.treatments = treatments
+
+        
 
     def sample(self, timestamp: int) -> Tuple[str, str]:
         """
@@ -81,5 +254,7 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
         """
         patient_id = np.random.choice(self.patient_ids)
         diagnosis_code = np.random.choice(self.diagnosis_codes)
+        treatments = [t for t in self.treatments if t.diagnosis == diagnosis_code]
+        treatment = np.random.choice(treatments, p=[t.frequency/100 for t in treatments])
 
-        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code, "timestamp": timestamp}
+        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": treatment.treatment_name, "timestamp": timestamp}
