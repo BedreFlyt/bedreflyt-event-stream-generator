@@ -31,19 +31,21 @@ class PatientDiagnosisETG(EventTimestampGenerator):
 
         super().__init__(occurrences, time_intervals, timestamp_constraints, occurrences_constraints)
 
-    def sample_noise (self, index: int) -> float:
+    def sample_noise (self, index: int, seed: int=42) -> float:
         """
         Samples the noise for timestamp generation.
         """
+        np.random.seed(seed)
         return np.random.normal(loc=0, scale=self.noise_sds[index])
 
-    def sample_occurrences (self, occurrences_i: int, index: int) -> float:
+    def sample_occurrences (self, occurrences_i: int, index: int, seed: int=42) -> float:
         """
         Samples the occurrences for a given index.
         """
         if self.occurrences_sds[index] == 0:
             return occurrences_i
 
+        np.random.seed(seed)
         sample = int(np.round(np.random.normal(
             loc=occurrences_i, scale=self.occurrences_sds[index])))
 
@@ -248,10 +250,11 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
 
         
 
-    def sample(self, timestamp: int) -> Tuple[str, str]:
+    def sample(self, timestamp: int, seed: int=42) -> Tuple[str, str]:
         """
         Generates a (patient_id, diagnosis_code) pair for timestamp.
         """
+        np.random.seed(seed)
         patient_id = np.random.choice(self.patient_ids)
         diagnosis_code = np.random.choice(self.diagnosis_codes)
         treatments = [t for t in self.treatments if t.diagnosis == diagnosis_code]
