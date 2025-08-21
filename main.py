@@ -29,7 +29,7 @@ neurosurgery_oslo_rooms = []
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(
-    level=logging.DEBUG,                            
+    level=logging.DEBUG,
     format="%(asctime)s %(name)s %(levelname)s: %(message)s",
 )
 
