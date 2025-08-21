@@ -1,6 +1,8 @@
 from src.patient_event_generator import PatientDiagnosisETG, PatientDiagnosisSampleSpace
-import src.type.api_types
+from src.EventStreamGenerator import EventStreamGenerator
+from src.type.api_types import Diagnosis, Treatment
 from src.services.api_calls import APICalls
+from src.utils.constraints import timestamp_constraints, occurrences_constraints
 
 import json
 import sys
@@ -9,6 +11,9 @@ import random
 import time
 import argparse
 import os
+import logging
+import math
+import numpy as np
 
 import numpy as np
 
@@ -21,6 +26,90 @@ headers = {
 
 neurosurgery_oslo_rooms = []
 
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=logging.DEBUG,                            
+    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+)
+
+global events
+
+# Callback function to handle events
+def event_handler(event):
+    # save the event into the events dictionary using the timestamp as key appending the event if present, or creating a new list
+    timestamp = math.floor(event[0])
+    if timestamp in events:
+        events[timestamp].append(event)
+    else:
+        events[timestamp] = [event]
+
+def create_allocation_batches(mode: str, time_steps: int, client: APICalls):
+    events = {}
+
+    intervals = [(i, i+1) for i in range(time_steps)]
+    occurrences = [i+1 for i in range(time_steps)]
+    time_scaling = 100 # 1 is real-time
+
+    # Occurrence Noise Standard Deviation
+    __occurrence_noise_sd = 1
+    occurrence_noise_sds = [__occurrence_noise_sd] * time_steps
+
+    patients = client.get_users()
+    if not patients:
+        logger.warning("No patients found")
+        return
+
+    temp_diagnoses = client.get_diagnoses()
+    if not temp_diagnoses:
+        logger.warning("No diagnoses found")
+        return
+    else:
+        diagnoses = [Diagnosis(el["diagnosisName"]) for el in temp_diagnoses]
+
+    # Filter diagnosis based on mode
+    if mode == "normal":
+        diagnoses = diagnoses
+    elif mode == "crisis":
+        diagnoses = [{
+                "diagnosis_name": "C71.2"
+            }, {
+                "diagnosis_name": "I60.1"
+            }, {
+                "diagnosis_name": "I60.0"
+            }]
+    elif mode == 'medium-crisis':
+        diagnoses = [{
+                "diagnosis_name": "C71.2"
+            }, {
+                "diagnosis_name": "I60.1"
+            }, {
+                "diagnosis_name": "I60.0"
+            }]
+        for diagnosis in random.sample(diagnoses, k=2):
+            diagnoses.append({"diagnosis_name": diagnosis["diagnosis_name"]})
+    else:
+        print(f"Invalid mode: {mode}")
+        assert False
+
+    etg = PatientDiagnosisETG(
+        occurrences=occurrences,
+        time_intervals=intervals,
+        noise_sds=[0] * time_steps,
+        occurrences_sds=occurrence_noise_sds,
+        timestamp_constraints=timestamp_constraints,
+        occurrences_constraints=occurrences_constraints
+    )
+    ess = PatientDiagnosisSampleSpace()
+    event = (etg, ess)
+
+    time_series_generator = EventStreamGenerator([event], event_handler)
+    # Run the generator to produce data for "max_time" time with a time-scaling of 100
+    data = time_series_generator.run(time_steps, time_scaling)
+
+    # Log results
+    logger.info(f"Generated data: {data}")
+
 def test_allocation(
         mode: str,
         mean: int,
@@ -28,131 +117,92 @@ def test_allocation(
         iteration: int,
         time_steps: int,
         client: APICalls):
-    
     time_step_times = []
-    patients = client.get_users()
-    if not patients:
-        print("No patients found")
-        return
-
-    diagnoses = client.get_diagnoses()
-    if not diagnoses:
-        print("No diagnoses found")
-        return
-    
-    # Filter diagnosis based on mode
-    if mode == "normal":
-        diagnoses = diagnoses
-    elif mode == "crisis":
-        diagnoses = [{
-                "diagnosisName": "C71.2"
-            }, {
-                "diagnosisName": "I60.1"
-            }, {
-                "diagnosisName": "I60.0"
-            }]
-    elif mode == 'medium-crisis':
-        diagnoses = [{
-                "diagnosisName": "C71.2"
-            }, {
-                "diagnosisName": "I60.1"
-            }, {
-                "diagnosisName": "I60.0"
-            }]
-        for diagnosis in random.sample(diagnoses, k=2):
-            diagnoses.append({"diagnosisName": diagnosis["diagnosisName"]})
-    else:
-        print(f"Invalid mode: {mode}")
-        assert False
-    
     total_capacities = []
     total_allocations = []
 
     allocations_number = 0
-    for time_step in range(time_steps):  # Perform 10 time_steps
-        start_time = time.time()  # Start timing the time_step
-        print(f"Starting time_step {time_step + 1}")
-        
-        wards = client.get_wards()
-        if not wards:
-            print("No wards found")
-            return
-        
-        capacities = {}
-        for ward in wards:
-            capacities[f"{ward['wardName']}_&_{ward['wardHospital']['hospitalCode']}"] = client.get_capacities(ward['wardName'], ward['wardHospital']['hospitalCode']) if ward['wardName'] == "Neurosurgery" else []
-        
-        for ward_key, ward_capacities in capacities.items():
-            if not ward_capacities:
-                print(f"No capacities found for ward {ward_key}")
-                continue
+    create_allocation_batches(mode, time_steps, client)
+
+    for k, _ in events:
+        for batch in events[k]:
+            start_time = time.time()  # Start timing the time_step
+            print(f"Starting time_step {time_step + 1}")
             
-            total_capacity = sum(ward_capacities)
+            wards = client.get_wards()
+            if not wards:
+                print("No wards found")
+                return
             
-            allocation_count = max(0, int(np.random.normal(mean, std, 1)[0]))  # Ensure allocation_count is non-negative
-            selected_patients = random.sample(patients, min(allocation_count, len(patients)))
+            capacities = {}
+            for ward in wards:
+                capacities[f"{ward['wardName']}_&_{ward['wardHospital']['hospitalCode']}"] = client.get_capacities(ward['wardName'], ward['wardHospital']['hospitalCode']) if ward['wardName'] == "Neurosurgery" else []
             
-            allocations = []
-            for patient in selected_patients:
-                allocations.append({
-                    "batch": int(time_step + 1),
-                    "patientId": patient["patientId"],
-                    "diagnosis": random.choice(diagnoses)["diagnosisName"]
+            for ward_key, ward_capacities in capacities.items():
+                if not ward_capacities:
+                    print(f"No capacities found for ward {ward_key}")
+                    continue
+
+                total_capacity = sum(ward_capacities)
+                allocation_count = max(0, int(np.random.normal(mean, std, 1)[0]))
+
+                allocations = []
+                for patient in batch:
+                    allocations.append({
+                        "batch": int(time_step + 1),
+                        "patientId": patient["patient_id"],
+                        "diagnosis": patient["diagnosis_name"]
+                    })
+
+                ward_name, hospital_code = ward_key.split("_&_")
+                # ward_name = "Neurosurgery"
+                logging.info(f"Allocating {len(allocations)} patients for ward {ward_name} with total capacity {total_capacity}")
+                allocations_number += len(allocations)
+                payload = {
+                    "scenario": allocations,
+                    "mode": "worst",
+                    "smtMode": "changes",
+                    "wardName": ward_name,
+                    "hospitalCode": hospital_code,
+                    "iteration": time_step,
+                }
+
+                # os.system("redis-cli FLUSHALL")  # Clear Redis cache before each allocation
+                response = requests.post(f"{url}/allocation/simulate", json=payload)
+                if response.status_code == 200:
+                    print(f"Successfully allocated patients for ward {ward_name} in hospital {hospital_code}")
+                else:
+                    print(f"Failed to allocate patients for ward {ward_name} in hospital {hospital_code}: {response.status_code}")
+                
+                # Save the total capacity and allocations for this ward
+                total_capacities.append({
+                    "time_step": time_step + 1,
+                    "ward": ward_key,
+                    "total_capacity": client.get_capacity(ward_name, hospital_code)
+                })
+                total_allocations.append({
+                    "time_step": time_step + 1,
+                    "ward": ward_key,
+                    "allocations": len(client.get_allocations())
                 })
             
-            
-            ward_name, hospital_code = ward_key.split("_&_")
-            # ward_name = "Neurosurgery"
-            print(f"Allocating {len(allocations)} patients for ward {ward_name} with total capacity {total_capacity}")
-            allocations_number += len(allocations)
-            payload = {
-                "scenario": allocations,
-                "mode": "worst",
-                "smtMode": "changes",
-                "wardName": ward_name,
-                "hospitalCode": hospital_code,
-                "iteration": time_step,
-            }
-            
-            # os.system("redis-cli FLUSHALL")  # Clear Redis cache before each allocation
-            response = requests.post(f"{url}/allocation/simulate", json=payload)
-            if response.status_code == 200:
-                print(f"Successfully allocated patients for ward {ward_name} in hospital {hospital_code}")
-            else:
-                print(f"Failed to allocate patients for ward {ward_name} in hospital {hospital_code}: {response.status_code}")
-            
-            # Save the total capacity and allocations for this ward
-            total_capacities.append({
-                "time_step": time_step + 1,
-                "ward": ward_key,
-                "total_capacity": client.get_capacity(ward_name, hospital_code)
-            })
-            total_allocations.append({
-                "time_step": time_step + 1,
-                "ward": ward_key,
-                "allocations": len(client.get_allocations())
-            })
-        
-        end_time = time.time()  # End timing the time_step
-        time_step_duration = end_time - start_time
-        time_step_times.append({"time_step": time_step + 1, "duration": time_step_duration})
-        print(f"time_step {time_step + 1} took {time_step_duration:.2f} seconds")
+            end_time = time.time()  # End timing the time_step
+            time_step_duration = end_time - start_time
+            time_step_times.append({"time_step": time_step + 1, "duration": time_step_duration})
+            print(f"time_step {time_step + 1} took {time_step_duration:.2f} seconds")
 
-        # Wait for 30 seconds before the next time_step
-        time.sleep(30)
+        # Write the capacities, allocations, and time_step times to files
+        output_data = {
+            "capacities": total_capacities,
+            "allocations": total_allocations
+        }
+        with open(f"allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+            json.dump(output_data, file, indent=4)
 
-    # Write the capacities, allocations, and time_step times to files
-    output_data = {
-        "capacities": total_capacities,
-        "allocations": total_allocations
-    }
-    with open(f"allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
-        json.dump(output_data, file, indent=4)
+        with open(f"time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+            json.dump(time_step_times, file, indent=4)
 
-    with open(f"time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
-        json.dump(time_step_times, file, indent=4)
-
-    print("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
+        logging.info("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
 
 if __name__ == "__main__":
     # Test the event generator with different modes
@@ -168,7 +218,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.mode not in ["normal", "crisis", "medium-crisis", "variable"]:
-        print("Usage: python event-generator.py [normal|crisis|medium-crisis|variable]")
+        logger.error("Usage: python event-generator.py [normal|crisis|medium-crisis|variable]")
         sys.exit(1)
 
     if args.host:
