@@ -127,7 +127,7 @@ def test_allocation(
     for k, _ in events:
         for batch in events[k]:
             start_time = time.time()  # Start timing the time_step
-            print(f"Starting time_step {time_step + 1}")
+            print(f"Starting time_step {k + 1}")
             
             wards = client.get_wards()
             if not wards:
@@ -149,7 +149,7 @@ def test_allocation(
                 allocations = []
                 for patient in batch:
                     allocations.append({
-                        "batch": int(time_step + 1),
+                        "batch": int(k + 1),
                         "patientId": patient["patient_id"],
                         "diagnosis": patient["diagnosis_name"]
                     })
@@ -164,7 +164,7 @@ def test_allocation(
                     "smtMode": "changes",
                     "wardName": ward_name,
                     "hospitalCode": hospital_code,
-                    "iteration": time_step,
+                    "iteration": k,
                 }
 
                 # os.system("redis-cli FLUSHALL")  # Clear Redis cache before each allocation
@@ -176,20 +176,20 @@ def test_allocation(
                 
                 # Save the total capacity and allocations for this ward
                 total_capacities.append({
-                    "time_step": time_step + 1,
+                    "time_step": k + 1,
                     "ward": ward_key,
                     "total_capacity": client.get_capacity(ward_name, hospital_code)
                 })
                 total_allocations.append({
-                    "time_step": time_step + 1,
+                    "time_step": k + 1,
                     "ward": ward_key,
                     "allocations": len(client.get_allocations())
                 })
             
             end_time = time.time()  # End timing the time_step
             time_step_duration = end_time - start_time
-            time_step_times.append({"time_step": time_step + 1, "duration": time_step_duration})
-            print(f"time_step {time_step + 1} took {time_step_duration:.2f} seconds")
+            time_step_times.append({"time_step": k + 1, "duration": time_step_duration})
+            print(f"time_step {k + 1} took {time_step_duration:.2f} seconds")
 
         # Write the capacities, allocations, and time_step times to files
         output_data = {
