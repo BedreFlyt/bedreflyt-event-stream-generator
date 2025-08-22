@@ -258,7 +258,8 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
         np.random.seed(seed)
         patient_id = np.random.choice(self.patient_ids)
         diagnosis_code = np.random.choice(self.diagnosis_codes)
-        treatments = [t for t in self.treatments if t.diagnosis == diagnosis_code]
-        treatment = np.random.choice(treatments, p=[t.frequency/100 for t in treatments])
+        treatments = [t for t in self.treatments 
+                      if t["diagnosis"]["diagnosisName"] == diagnosis_code.diagnosis_name]
+        treatment = np.random.choice(treatments, p=[t["frequency"]/100 for t in treatments])
 
-        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": treatment.treatment_name, "timestamp": timestamp}
+        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code, "treatment": treatment["treatmentName"], "timestamp": timestamp}
