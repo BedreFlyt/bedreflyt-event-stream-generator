@@ -237,13 +237,13 @@ def test_allocation(
         "capacities": total_capacities,
         "allocations": total_allocations
     }
-    with open(f"allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    with open(f"sim_output/allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
         json.dump(output_data, file, indent=4)
 
-    with open(f"time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    with open(f"sim_output/time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
         json.dump(time_step_times, file, indent=4)
 
-    with open(f"executions_time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    with open(f"sim_output/executions_time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
         json.dump(total_times_results, file, indent=4)
 
     logging.info("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
