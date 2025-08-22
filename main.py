@@ -1,8 +1,8 @@
 from src.patient_event_generator import PatientDiagnosisETG, PatientDiagnosisSampleSpace
 from src.EventStreamGenerator import EventStreamGenerator
 from src.type.api_types import Diagnosis, Treatment
-from src.services.api_calls import APICalls
-from src.utils.constraints import timestamp_constraints, occurrences_constraints
+from src.services.api_calls import APIClient
+from src.utilities.constraints import timestamp_constraints, occurrences_constraints
 
 import json
 import sys
@@ -44,16 +44,15 @@ def event_handler(event):
     else:
         events[timestamp] = [event]
 
-def create_allocation_batches(mode: str, time_steps: int, client: APICalls):
+def create_allocation_batches(mean: int, sds: int, mode: str, time_steps: int, client: APIClient):
     events = {}
 
     intervals = [(i, i+1) for i in range(time_steps)]
-    occurrences = [i+1 for i in range(time_steps)]
+    occurrences = [mean] * time_steps
     time_scaling = 100 # 1 is real-time
 
     # Occurrence Noise Standard Deviation
-    __occurrence_noise_sd = 1
-    occurrence_noise_sds = [__occurrence_noise_sd] * time_steps
+    occurrence_noise_sds = [sds] * time_steps
 
     patients = client.get_users()
     if not patients:
@@ -116,13 +115,14 @@ def test_allocation(
         std: int,
         iteration: int,
         time_steps: int,
-        client: APICalls):
+        client: APIClient):
     time_step_times = []
     total_capacities = []
     total_allocations = []
+    total_times_results = []
 
     allocations_number = 0
-    create_allocation_batches(mode, time_steps, client)
+    create_allocation_batches(mean, std, mode, time_steps, client)
 
     for k, _ in events:
         for batch in events[k]:
@@ -171,6 +171,13 @@ def test_allocation(
                 response = requests.post(f"{url}/allocation/simulate", json=payload)
                 if response.status_code == 200:
                     print(f"Successfully allocated patients for ward {ward_name} in hospital {hospital_code}")
+                    response_data = response.json()
+                    executions_data = response_data.get("executions")
+                    total_times_results.append({
+                        "time_step": k + 1,
+                        "ward": ward_key,
+                        "duration": executions_data
+                    })
                 else:
                     print(f"Failed to allocate patients for ward {ward_name} in hospital {hospital_code}: {response.status_code}")
                 
@@ -202,6 +209,9 @@ def test_allocation(
         with open(f"time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
             json.dump(time_step_times, file, indent=4)
 
+        with open(f"executions_time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+            json.dump(total_times_results, file, indent=4)
+
         logging.info("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
 
 if __name__ == "__main__":
@@ -222,12 +232,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.host:
-        client = APICalls(args.host)
+        client = APIClient(args.host)
     else:
-        client = APICalls()
+        client = APIClient()
 
     for iteration in range(args.iterations):
-        print('Iteration', i)
+        print('Iteration', iteration)
         if args.rooms > 0:
             for i in range(args.rooms):
                 neurosurgery_oslo_rooms.append(330 + i)

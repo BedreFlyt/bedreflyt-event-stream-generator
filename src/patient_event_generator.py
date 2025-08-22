@@ -1,6 +1,7 @@
-from EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
+from src.EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
+from src.type.api_types import Diagnosis, Treatment
 from typing import List, Tuple, Dict, Set, Callable, Any
-from type.api_types import Diagnosis, Treatment
+
 import numpy as np
 
 class PatientDiagnosisETG(EventTimestampGenerator):
