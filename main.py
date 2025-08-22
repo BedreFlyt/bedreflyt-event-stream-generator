@@ -237,6 +237,10 @@ def test_allocation(
         "capacities": total_capacities,
         "allocations": total_allocations
     }
+
+    # Create folder {mode}_{mean}_{std}_{iteration}_{time_steps}
+    os.makedirs(f"sim_output/{mode}_{mean}_{std}_{iteration}_{time_steps}", exist_ok=True)
+
     with open(f"sim_output/allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
         json.dump(output_data, file, indent=4)
 
