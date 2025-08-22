@@ -251,6 +251,6 @@ if __name__ == "__main__":
         time.sleep(10)
         print("Starting allocation test")
 
-        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps)
+        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, client)
 
         client.delete_rooms_for_neurosurgery_oslo()
