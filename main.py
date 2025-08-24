@@ -238,16 +238,18 @@ def test_allocation(
         "allocations": total_allocations
     }
 
-    # Create folder {mode}_{mean}_{std}_{iteration}_{time_steps}
-    os.makedirs(f"sim_output/{mode}_{mean}_{std}_{iteration}_{time_steps}", exist_ok=True)
+    folder_name = f"{mode}_{mean}_{std}_{iteration}_{time_steps}"
 
-    with open(f"sim_output/allocation_results_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    # Create folder {mode}_{mean}_{std}_{iteration}_{time_steps}
+    os.makedirs(f"sim_output/{folder_name}", exist_ok=True)
+
+    with open(f"sim_output/{folder_name}/allocation_results.json", "w") as file:
         json.dump(output_data, file, indent=4)
 
-    with open(f"sim_output/time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    with open(f"sim_output/{folder_name}/time_step_times.json", "w") as file:
         json.dump(time_step_times, file, indent=4)
 
-    with open(f"sim_output/executions_time_step_times_{mode}_{mean}_{std}_{iteration}_{time_steps}.json", "w") as file:
+    with open(f"sim_output/{folder_name}/executions_time_step_times.json", "w") as file:
         json.dump(total_times_results, file, indent=4)
 
     logging.info("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
