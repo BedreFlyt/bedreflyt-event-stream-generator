@@ -42,12 +42,23 @@ class PatientDiagnosisETG(EventTimestampGenerator):
     def sample_occurrences (self, occurrences_i: int, index: int, seed: int=42) -> float:
         """
         Samples the occurrences for a given index.
+        Two levels of randomness:
+        - seed: for reproducibility (can be fixed) 
+        - occurrences_sds: for variation around the mean occurrence value
         """
         if self.occurrences_sds[index] == 0:
             return occurrences_i
 
-        np.random.seed(seed)
-        sample = int(np.round(np.random.normal(
+        # Use a different random state for each call to ensure variation
+        if seed is not None:
+            # Create a unique deterministic seed 
+            unique_seed = hash((seed, index)) % (7**7)
+            local_rng = np.random.RandomState(unique_seed)
+        else:
+            # Use the global random state if no seed is provided
+            local_rng = np.random
+        
+        sample = int(np.round(local_rng.normal(
             loc=occurrences_i, scale=self.occurrences_sds[index])))
 
         return max(0, sample) # Ensure non-negative values
