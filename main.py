@@ -52,7 +52,8 @@ def create_allocation_batches(
         sds: int,
         mode: str,
         time_steps: int,
-        client: APIClient):
+        client: APIClient,
+        seed: int = 42):
     global events
     events = {}
 
@@ -107,6 +108,7 @@ def create_allocation_batches(
         time_intervals=intervals,
         noise_sds=[0] * time_steps,
         occurrences_sds=occurrence_noise_sds,
+        seed=seed,
         timestamp_constraints=timestamp_constraints,
         occurrences_constraints=occurrences_constraints
     )
@@ -114,6 +116,7 @@ def create_allocation_batches(
         patient_ids=[patient["patientId"] for patient in patients],
         diagnosis_codes=diagnoses,
         treatments=treatments,
+        seed=seed
     )
     event = (etg, ess)
 
@@ -139,7 +142,7 @@ def test_allocation(
     print(f"Testing allocation with mode: {mode}, mean: {mean}, std: {std}, iteration: {iteration}, time_steps: {time_steps}")
 
     allocations_number = 0
-    create_allocation_batches(mean, std, mode, time_steps, client)
+    create_allocation_batches(mean, std, mode, time_steps, client, iteration)
 
     global events
     for k in events:

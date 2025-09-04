@@ -14,6 +14,7 @@ class PatientDiagnosisETG(EventTimestampGenerator):
                   time_intervals: List[Tuple[int, int]],
                   noise_sds: List[float] = None,
                   occurrences_sds: List[float] = None,
+                  seed: int = 42,
                   timestamp_constraints: Set[Callable[[dict, Any], bool]]={
                      # Every timestamp (ts) must be non-negative
                      lambda state, ts: ts > 0, 
@@ -29,17 +30,18 @@ class PatientDiagnosisETG(EventTimestampGenerator):
                  ) -> None:
         self.noise_sds = noise_sds or [0] * len(time_intervals)
         self.occurrences_sds = occurrences_sds or [0] * len(occurrences)
+        self.seed = seed
 
         super().__init__(occurrences, time_intervals, timestamp_constraints, occurrences_constraints)
 
-    def sample_noise (self, index: int, seed: int=42) -> float:
+    def sample_noise (self, index: int) -> float:
         """
         Samples the noise for timestamp generation.
         """
-        np.random.seed(seed)
+        np.random.seed(self.seed)
         return np.random.normal(loc=0, scale=self.noise_sds[index])
 
-    def sample_occurrences (self, occurrences_i: int, index: int, seed: int=42) -> float:
+    def sample_occurrences (self, occurrences_i: int, index: int) -> float:
         """
         Samples the occurrences for a given index.
         Two levels of randomness:
@@ -50,16 +52,17 @@ class PatientDiagnosisETG(EventTimestampGenerator):
             return occurrences_i
 
         # Use a different random state for each call to ensure variation
-        if seed is not None:
-            # Create a unique deterministic seed 
-            unique_seed = hash((seed, index)) % (7**7)
+        if self.seed is not None:
+            # Create a unique deterministic seed
+            unique_seed = hash((self.seed, index)) % (7**7)
             local_rng = np.random.RandomState(unique_seed)
         else:
             # Use the global random state if no seed is provided
             local_rng = np.random
         
-        sample = int(np.round(local_rng.normal(
-            loc=occurrences_i, scale=self.occurrences_sds[index])))
+        # sample = int(np.round(local_rng.normal(
+        #     loc=occurrences_i, scale=self.occurrences_sds[index])))
+        sample = int(np.round(local_rng.poisson(lam=occurrences_i)))
 
         return max(0, sample) # Ensure non-negative values
 
@@ -72,9 +75,11 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
     def __init__(self,
                  patient_ids: List[str]=None,
                  diagnosis_codes: List[Diagnosis]=None,
-                 treatments: List[Treatment]=None) -> None:
+                 treatments: List[Treatment]=None,
+                 seed: int = 42) -> None:
         super().__init__()
 
+        self.seed = seed
         self.patient_ids = patient_ids or [f"P{i}" for i in range(100)]
 
         # Hardcoded from the current implementation of Bedreflyt for testing purposes
@@ -262,15 +267,24 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
 
         
 
-    def sample(self, timestamp: int, seed: int=42) -> Tuple[str, str]:
+    def sample(self, timestamp: int) -> Tuple[str, str]:
         """
         Generates a (patient_id, diagnosis_code) pair for timestamp.
         """
-        np.random.seed(seed)
+        unique_seed = hash((self.seed, timestamp)) % (7**7)
+        np.random.seed(unique_seed)
         patient_id = np.random.choice(self.patient_ids)
+    
+        self.diagnosis_codes = [d for d in self.diagnosis_codes if d.diagnosis_name != "G50.0"]
         diagnosis_code = np.random.choice(self.diagnosis_codes)
         treatments = [t for t in self.treatments 
-                      if t["diagnosis"]["diagnosisName"] == diagnosis_code.diagnosis_name]
+              if t["diagnosis"]["diagnosisName"] == diagnosis_code.diagnosis_name]
+        treatments = [t for t in treatments if t]
+        if not treatments:
+            # Handle case where no treatments are found for this diagnosis
+            print(f"Warning: No treatments found for diagnosis {diagnosis_code.diagnosis_name}")
+            return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": None, "timestamp": timestamp}
+    
         treatment = np.random.choice(treatments, p=[t["frequency"]/100 for t in treatments])
 
-        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code, "treatment": treatment["treatmentName"], "timestamp": timestamp}
+        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": treatment["treatmentName"], "timestamp": timestamp}
