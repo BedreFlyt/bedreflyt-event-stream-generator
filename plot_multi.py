@@ -1,6 +1,7 @@
 import json
 import matplotlib.pyplot as plt
 import argparse
+import numpy as np
 
 parser = argparse.ArgumentParser("plot-multi.py")
 parser.add_argument("--std", help="Standard deviation", type=int, default="1")
@@ -48,38 +49,71 @@ for i in range(iterations+1):
         # Accumulate allocation values
         accumulated_ward_data[ward][time_step].append(allocation)
 
-# Calculate averages and prepare plot data
-ward_averages = {}
+# Calculate averages, 25th and 75th percentiles and prepare plot data
+ward_statistics = {}
 for ward, time_data in accumulated_ward_data.items():
-    ward_averages[ward] = {}
-    ward_averages[ward][0] = 0  # Ensure time step 0 is included with 0 allocation
+    ward_statistics[ward] = {
+        'averages': {},
+        'percentile_25': {},
+        'percentile_75': {}
+    }
+    ward_statistics[ward]['averages'][0] = 0  # Ensure time step 0 is included with 0 allocation
+    ward_statistics[ward]['percentile_25'][0] = 0
+    ward_statistics[ward]['percentile_75'][0] = 0
+    
     for time_step, capacity_list in time_data.items():
-        ward_averages[ward][time_step] = sum(capacity_list) / len(capacity_list)
+        ward_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        ward_statistics[ward]['percentile_25'][time_step] = np.percentile(capacity_list, 25)
+        ward_statistics[ward]['percentile_75'][time_step] = np.percentile(capacity_list, 75)
 
-# Create single plot with averaged data
+# Create single plot with averaged data and percentiles
 plt.figure(figsize=(15, 7))
 
 colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
 
 # Get all unique time steps for consistent x-axis labeling
 all_time_steps = set()
-for ward_data in ward_averages.values():
-    all_time_steps.update(ward_data.keys())
+for ward_data in ward_statistics.values():
+    all_time_steps.update(ward_data['averages'].keys())
 time_steps_sorted = sorted(all_time_steps)
 x_indices = range(len(time_steps_sorted))
 
-for i, (ward, time_data) in enumerate(ward_averages.items()):
-    time_steps_sorted = sorted(time_data.keys())
-    avg_capacities = [time_data[time_step] for time_step in time_steps_sorted]
+for i, (ward, stats) in enumerate(ward_statistics.items()):
+    time_steps_sorted = sorted(stats['averages'].keys())
+    avg_capacities = [stats['averages'][time_step] for time_step in time_steps_sorted]
+    p25_capacities = [stats['percentile_25'][time_step] for time_step in time_steps_sorted]
+    p75_capacities = [stats['percentile_75'][time_step] for time_step in time_steps_sorted]
+    
+    color = colors[i % len(colors)]
+    ward_name = ward.split("_")[0]
     
     # Plot averaged capacities as lines
     plt.plot(time_steps_sorted, avg_capacities, 
-             label=f'{ward.split("_")[0]} Avg Capacity', 
+             label=f'{ward_name} Average', 
              marker='o', 
-             color=colors[i % len(colors)], 
+             color=color, 
              linewidth=2)
+    
+    # Plot percentiles as lighter lines
+    plt.plot(time_steps_sorted, p25_capacities, 
+             color=color, 
+             linestyle=':', 
+             alpha=0.7, 
+             linewidth=1,
+             label=f'{ward_name} 25th percentile')
+    
+    plt.plot(time_steps_sorted, p75_capacities, 
+             color=color, 
+             linestyle=':', 
+             alpha=0.7, 
+             linewidth=1,
+             label=f'{ward_name} 75th percentile')
+    
+    # Fill area between 25th and 75th percentiles
+    plt.fill_between(time_steps_sorted, p25_capacities, p75_capacities, 
+                     color=color, alpha=0.2)
 
-plt.title(f'Average Allocations across {iterations+1} iterations ({mode} mode)')
+plt.title(f'Average Allocations with Percentiles across multiple iterations')
 plt.xlabel('Time step')
 plt.ylabel('Allocations and Capacity Counts')
 plt.grid(True)
@@ -92,5 +126,6 @@ plt.axhline(y=45, color='purple', linestyle='--', linewidth=1.5, label='Initial 
 plt.axhline(y=47, color='orange', linestyle='--', linewidth=1.5, label='With extra office 1')
 plt.axhline(y=49, color='brown', linestyle='--', linewidth=1.5, label='With extra office 2')
 plt.axhline(y=89, color='red', linestyle='--', linewidth=1.5, label='With corridor')
-plt.legend()
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
 plt.show()
