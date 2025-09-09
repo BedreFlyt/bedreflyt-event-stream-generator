@@ -66,10 +66,59 @@ for ward, time_data in accumulated_ward_data.items():
         ward_statistics[ward]['percentile_25'][time_step] = np.percentile(capacity_list, 25)
         ward_statistics[ward]['percentile_75'][time_step] = np.percentile(capacity_list, 75)
 
+
+accumulated_capacity_data = {}
+
+# Load and accumulate data for capacities from all iterations
+for i in range(iterations+1):
+    folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}"
+
+    with open(f'sim_output/{folder_name}/allocation_results.json') as f:
+        data = json.load(f)
+
+    # Extract capacities
+    capacities = data['capacities']
+
+    # Organize data by ward
+    for item in capacities:
+        ward = item['ward']
+        time_step = item['time_step']
+        capacity = item['total_capacity']
+
+        # Initialize ward data structure if not exists
+        if ward not in accumulated_capacity_data:
+            accumulated_capacity_data[ward] = {}
+        
+        # Initialize time step data if not exists
+        if time_step not in accumulated_capacity_data[ward]:
+            accumulated_capacity_data[ward][time_step] = []
+
+        # Accumulate capacity values
+        accumulated_capacity_data[ward][time_step].append(capacity)
+
+
+# Calculate averages, 25th and 75th percentiles for capacities
+capacity_statistics = {}
+for ward, time_data in accumulated_capacity_data.items():
+    capacity_statistics[ward] = {
+        'averages': {},
+        'percentile_25': {},
+        'percentile_75': {}
+    }
+    capacity_statistics[ward]['averages'][0] = 0  # Ensure time step 0 is included with 0 capacity
+    capacity_statistics[ward]['percentile_25'][0] = 0
+    capacity_statistics[ward]['percentile_75'][0] = 0
+    
+    for time_step, capacity_list in time_data.items():
+        capacity_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        capacity_statistics[ward]['percentile_25'][time_step] = np.percentile(capacity_list, 25)
+        capacity_statistics[ward]['percentile_75'][time_step] = np.percentile(capacity_list, 75)
+
 # Create single plot with averaged data and percentiles
 plt.figure(figsize=(15, 7))
 
-colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+allocation_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+capacity_colors = ['tab:red', 'tab:pink', 'tab:cyan', 'tab:gray', 'tab:blue', 'tab:red']
 
 # Get all unique time steps for consistent x-axis labeling
 all_time_steps = set()
@@ -84,7 +133,7 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
     p25_capacities = [stats['percentile_25'][time_step] for time_step in time_steps_sorted]
     p75_capacities = [stats['percentile_75'][time_step] for time_step in time_steps_sorted]
     
-    color = colors[i % len(colors)]
+    color = allocation_colors[i % len(allocation_colors)]
     ward_name = ward.split("_")[0]
     
     # Plot averaged capacities as lines
@@ -112,6 +161,26 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
     # Fill area between 25th and 75th percentiles
     plt.fill_between(time_steps_sorted, p25_capacities, p75_capacities, 
                      color=color, alpha=0.2)
+    
+# Add capacities to the same plot
+for i, (ward, stats) in enumerate(capacity_statistics.items()):
+    time_steps_sorted = sorted(stats['averages'].keys())
+    avg_capacities = [stats['averages'][time_step] for time_step in time_steps_sorted]
+    p25_capacities = [stats['percentile_25'][time_step] for time_step in time_steps_sorted]
+    p75_capacities = [stats['percentile_75'][time_step] for time_step in time_steps_sorted]
+    
+    color = capacity_colors[i % len(capacity_colors)]
+    ward_name = ward.split("_")[0]
+    
+    # Plot capacities with dashed lines
+    plt.plot(time_steps_sorted, avg_capacities, 
+             label=f'{ward_name} Capacities Average', 
+             marker='x', 
+             color=color, 
+             linestyle='--', 
+             linewidth=2)
+    plt.fill_between(time_steps_sorted, p25_capacities, p75_capacities, 
+                     color=color, alpha=0.1, label=f'{ward_name} Capacities Range')
 
 plt.title(f'Average Allocations with Percentiles across multiple iterations')
 plt.xlabel('Time step')
