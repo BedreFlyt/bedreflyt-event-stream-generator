@@ -138,7 +138,7 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
     
     # Plot averaged capacities as lines
     plt.plot(time_steps_sorted, avg_capacities, 
-             label=f'{ward_name} Average', 
+             label=f'Average allocations', 
              marker='o', 
              color=color, 
              linewidth=2)
@@ -146,17 +146,17 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
     # Plot percentiles as lighter lines
     plt.plot(time_steps_sorted, p25_capacities, 
              color=color, 
-             linestyle=':', 
+             linestyle='-.', 
              alpha=0.7, 
-             linewidth=1,
-             label=f'{ward_name} 25th percentile')
+             linewidth=1.3,
+             label=f'Allocations 25th percentile')
     
     plt.plot(time_steps_sorted, p75_capacities, 
              color=color, 
              linestyle=':', 
              alpha=0.7, 
-             linewidth=1,
-             label=f'{ward_name} 75th percentile')
+             linewidth=1.3,
+             label=f'Allocations 75th percentile')
     
     # Fill area between 25th and 75th percentiles
     plt.fill_between(time_steps_sorted, p25_capacities, p75_capacities, 
@@ -174,15 +174,29 @@ for i, (ward, stats) in enumerate(capacity_statistics.items()):
     
     # Plot capacities with dashed lines
     plt.plot(time_steps_sorted, avg_capacities, 
-             label=f'{ward_name} Capacities Average', 
+             label=f'Capacities Average', 
              marker='x', 
              color=color, 
              linestyle='--', 
              linewidth=2)
+    # Plot percentiles as lighter lines
+    plt.plot(time_steps_sorted, p25_capacities, 
+             color=color, 
+             linestyle='-.', 
+             alpha=0.7, 
+             linewidth=1.3,
+             label=f'Capacity 25th percentile')
+    
+    plt.plot(time_steps_sorted, p75_capacities, 
+             color=color, 
+             linestyle=':', 
+             alpha=0.7, 
+             linewidth=1.3,
+             label=f'Capacity 75th percentile')
     plt.fill_between(time_steps_sorted, p25_capacities, p75_capacities, 
-                     color=color, alpha=0.1, label=f'{ward_name} Capacities Range')
+                     color=color, alpha=0.2)#, label=f'{ward_name} Capacities Range')
 
-plt.title(f'Average Allocations with Percentiles across multiple iterations')
+plt.title(f'Adaptation of capacity over time with varying allocations', fontsize=14)
 plt.xlabel('Time step')
 plt.ylabel('Allocations and Capacity Counts')
 plt.grid(True)
@@ -190,11 +204,11 @@ plt.grid(True)
 # Set x-tick labels to show actual time step values
 plt.xticks(x_indices, time_steps_sorted)
 
-plt.axhline(y=40, color='green', linestyle='--', linewidth=1.5, label='Adaptation threshold')
-plt.axhline(y=45, color='purple', linestyle='-', linewidth=1.5, label='Initial capacity')
-plt.axhline(y=47, color='orange', linestyle=':', linewidth=1.5, label='With extra office 1')
-plt.axhline(y=49, color='brown', linestyle='-.', linewidth=1.5, label='With extra office 2')
-plt.axhline(y=89, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=1.5, label='With corridor')
+plt.axhline(y=40, color='green', linestyle='--', linewidth=2.5, label='Adaptation threshold')
+plt.axhline(y=45, color='purple', linestyle='-', linewidth=2.5, label='Initial capacity')
+plt.axhline(y=49, color='brown', linestyle=':', linewidth=2.5, label='With extra office 1')
+plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='With extra office 2')
+plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='With corridor')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
