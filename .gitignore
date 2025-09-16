@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .DS_Store
 sim_output/
+requests/
 
 # C extensions
 *.so
