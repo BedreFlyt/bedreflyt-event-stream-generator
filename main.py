@@ -133,10 +133,12 @@ def test_allocation(
         std: int,
         iteration: int,
         time_steps: int,
+        adaptive: bool,
         client: APIClient):
     time_step_times = []
     total_capacities = []
     total_allocations = []
+    total_completes = []
     total_times_results = []
 
     print(f"Testing allocation with mode: {mode}, mean: {mean}, std: {std}, iteration: {iteration}, time_steps: {time_steps}")
@@ -202,8 +204,13 @@ def test_allocation(
             "wardName": ward_name,
             "hospitalCode": hospital_code,
             "iteration": k,
+            "adaptiveCapacity": adaptive
         }
 
+        with open(f"requests/{mean}_{std}_{mode}_{iteration}_{k}_{time_steps}_payload.json", "w") as file:
+            json.dump(payload, file)
+
+        # client.delete_allocations()
         # os.system("redis-cli FLUSHALL")  # Clear Redis cache before each allocation
         response = requests.post(f"{url}/allocation/simulate", json=payload)
         if response.status_code == 200:
@@ -215,8 +222,18 @@ def test_allocation(
                 "ward": ward_key,
                 "duration": executions_data
             })
+            total_completes.append({
+                "time_step": k + 1,
+                "ward": ward_key,
+                "completes": True
+            })
         else:
             print(f"Failed to allocate patients for ward {ward_name} in hospital {hospital_code}: {response.status_code}")
+            total_completes.append({
+                "time_step": k + 1,
+                "ward": ward_key,
+                "completes": False
+            })
         
         # Save the total capacity and allocations for this ward
         total_capacities.append({
@@ -238,10 +255,11 @@ def test_allocation(
     # Write the capacities, allocations, and time_step times to files
     output_data = {
         "capacities": total_capacities,
-        "allocations": total_allocations
+        "allocations": total_allocations,
+        "completion": total_completes
     }
 
-    folder_name = f"{mode}_{mean}_{std}_{iteration}_{time_steps}"
+    folder_name = f"{mode}_{mean}_{std}_{iteration}_{time_steps}_{adaptive}"
 
     # Create folder {mode}_{mean}_{std}_{iteration}_{time_steps}
     os.makedirs(f"sim_output/{folder_name}", exist_ok=True)
@@ -268,6 +286,7 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", help="Iterations", type=int, default="10")
     parser.add_argument("--time_steps", help="Time steps to run", type=int, default="10")
     parser.add_argument("--rooms", help="Create rooms for Neurosurgery in Oslo", type=int, default=0)
+    parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
     
     if args.mode not in ["normal", "crisis", "medium-crisis", "variable"]:
@@ -294,6 +313,6 @@ if __name__ == "__main__":
         time.sleep(1)
         print("Starting allocation test")
 
-        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, client)
+        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, client)
 
         # client.delete_rooms_for_neurosurgery_oslo()
