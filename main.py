@@ -52,13 +52,25 @@ def create_allocation_batches(
         sds: int,
         mode: str,
         time_steps: int,
+        peaks: bool,
         client: APIClient,
         seed: int = 42):
     global events
     events = {}
 
     intervals = [(i, i+1) for i in range(time_steps)]
-    occurrences = [mean] * time_steps
+    occurrences = []
+
+    # If we have peaks, we need to alternate between high and low occurrences every 5 time steps
+    if peaks:
+        for i in range(time_steps):
+            if (i // 5) % 2 == 0:
+                occurrences.append(mean * 1.5)
+            else:
+                occurrences.append(mean / 1.5)
+    else:
+        occurrences = [mean] * time_steps
+
     time_scaling = 100 # 1 is real-time
 
     # Occurrence Noise Standard Deviation
@@ -134,6 +146,8 @@ def test_allocation(
         iteration: int,
         time_steps: int,
         adaptive: bool,
+        peaks: bool,
+        starts_at: int,
         client: APIClient):
     time_step_times = []
     total_capacities = []
@@ -144,7 +158,7 @@ def test_allocation(
     print(f"Testing allocation with mode: {mode}, mean: {mean}, std: {std}, iteration: {iteration}, time_steps: {time_steps}")
 
     allocations_number = 0
-    create_allocation_batches(mean, std, mode, time_steps, client, iteration)
+    create_allocation_batches(mean, std, mode, time_steps, peaks, client, iteration)
 
     global events
     for k in events:
@@ -286,7 +300,9 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", help="Iterations", type=int, default="10")
     parser.add_argument("--time_steps", help="Time steps to run", type=int, default="10")
     parser.add_argument("--rooms", help="Create rooms for Neurosurgery in Oslo", type=int, default=0)
+    parser.add_argument("--starts_at", help="Start execution at a specific time step", type=int, default=0)
     parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--peak-adaptive", help="Use peak adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
     
     if args.mode not in ["normal", "crisis", "medium-crisis", "variable"]:
@@ -298,14 +314,27 @@ if __name__ == "__main__":
     else:
         client = APIClient()
 
+    if args.starts_at > 0:
+        if args.starts_at >= args.time_steps:
+            print(f"starts_at {args.starts_at} must be less than time_steps {args.time_steps}")
+            sys.exit(1)
+        print(f"Starting execution at time step {args.starts_at}")
+        starts_at = args.starts_at
+    else:
+        starts_at = 0
+
+    if args.rooms > 0:
+        for i in range(args.rooms):
+            neurosurgery_oslo_rooms.append(330 + i)
+        print(f"Creating {args.rooms} rooms for Neurosurgery in Oslo")
+        client.create_rooms_for_neurosurgery_oslo()
+        # os.system("redis-cli FLUSHALL")
+
     for iteration in range(args.iterations):
         print('Iteration', iteration)
-        if args.rooms > 0:
-            for i in range(args.rooms):
-                neurosurgery_oslo_rooms.append(330 + i)
-            print(f"Creating {args.rooms} rooms for Neurosurgery in Oslo")
-            client.create_rooms_for_neurosurgery_oslo()
-            # os.system("redis-cli FLUSHALL")
+        if iteration < starts_at:
+            print(f"Skipping iteration {iteration} as it is before starts_at {starts_at}")
+            continue
 
         client.delete_allocations()
         print("Deleted all previous allocations")
@@ -313,6 +342,6 @@ if __name__ == "__main__":
         time.sleep(1)
         print("Starting allocation test")
 
-        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, client)
+        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, args.peak_adaptive, starts_at, client)
 
         # client.delete_rooms_for_neurosurgery_oslo()
