@@ -74,9 +74,9 @@ im = ax.imshow(heatmap_data, cmap='YlGnBu', aspect='auto', vmin=0, vmax=1)
 
 ward_name = ward.split("_")[0]
 ax.set_title(f'Completion Status Over Iterations and Time Steps (λ = {mean})\n'
-             'Blue=Completed, Yellow=Not Completed')
-ax.set_xlabel('Time Step')
-ax.set_ylabel('Iteration')
+             'Blue=Allocation successful, Yellow=Allocation failed', fontsize=18)
+ax.set_xlabel('Time Step', fontsize=16)
+ax.set_ylabel('Iteration', fontsize=16)
 
 # Set tick labels
 ax.set_xticks(range(len(all_time_steps)))
@@ -86,4 +86,8 @@ ax.set_yticklabels(range(iterations))
 
 # fig.colorbar(im, ax=ax, label='Completion Status (0=False, 1=True)')
 
-plt.show()
+# Save the figure
+plt.tight_layout()
+plt.savefig(f'plots/multi_completion_{mode}_{mean}_{std}_{iterations}_{max_time_steps}_{args.adaptive}.png', dpi=300)
+
+# plt.show()
