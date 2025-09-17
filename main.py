@@ -217,7 +217,7 @@ def test_allocation(
             "smtMode": "changes",
             "wardName": ward_name,
             "hospitalCode": hospital_code,
-            "iteration": k,
+            "timeStep": k,
             "adaptiveCapacity": adaptive
         }
 
