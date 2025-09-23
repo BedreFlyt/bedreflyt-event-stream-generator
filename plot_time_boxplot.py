@@ -57,9 +57,9 @@ fig, ax = plt.subplots(figsize=(12, 8))
 
 if box_data:
     ax.boxplot(box_data, labels=labels)
-    ax.set_title(f'Component Timing Distribution')
-    ax.set_ylabel('Time (seconds)')
-    ax.set_xlabel('Components')
+    ax.set_title(f'Component Timing Distribution', fontsize=18)
+    ax.set_ylabel('Time (seconds)', fontsize=15)
+    ax.set_xlabel('Components', fontsize=15)
     ax.tick_params(axis='x', rotation=45)
 
 plt.tight_layout()

@@ -67,7 +67,8 @@ for ward, time_data in accumulated_ward_data.items():
     ward_statistics[ward]['percentile_75'][0] = 0
     
     for time_step, capacity_list in time_data.items():
-        ward_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        # ward_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        ward_statistics[ward]['averages'][time_step] = np.percentile(capacity_list, 50)
         ward_statistics[ward]['percentile_25'][time_step] = np.percentile(capacity_list, 25)
         ward_statistics[ward]['percentile_75'][time_step] = np.percentile(capacity_list, 75)
 
@@ -117,7 +118,8 @@ for ward, time_data in accumulated_capacity_data.items():
     capacity_statistics[ward]['percentile_75'][0] = 0
     
     for time_step, capacity_list in time_data.items():
-        capacity_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        # capacity_statistics[ward]['averages'][time_step] = np.mean(capacity_list)
+        capacity_statistics[ward]['averages'][time_step] = np.percentile(capacity_list, 50)
         capacity_statistics[ward]['percentile_25'][time_step] = np.percentile(capacity_list, 25)
         capacity_statistics[ward]['percentile_75'][time_step] = np.percentile(capacity_list, 75)
 
@@ -150,7 +152,7 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
     
     # Plot averaged allocations as lines using indices
     plt.plot(ward_x_indices, avg_allocations, 
-             label=f'Average allocations', 
+             label=f'Allocations 50th percentile', 
              marker='o', 
              color=color, 
              linewidth=2)
@@ -189,7 +191,7 @@ for i, (ward, stats) in enumerate(capacity_statistics.items()):
     
     # Plot capacities with dashed lines using indices
     plt.plot(ward_x_indices, avg_capacities, 
-             label=f'Capacities Average', 
+             label=f'Capacities 50th percentile', 
              marker='x', 
              color=color, 
              linestyle='--', 
