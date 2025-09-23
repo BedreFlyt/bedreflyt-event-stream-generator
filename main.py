@@ -137,7 +137,7 @@ def create_allocation_batches(
     data = time_series_generator.run(time_steps, time_scaling)
 
     # Log results
-    logger.info(f"Generated data: {data}")
+    # logger.info(f"Generated data: {data}")
 
 def test_allocation(
         mode: str,
