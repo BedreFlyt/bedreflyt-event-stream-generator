@@ -10,6 +10,7 @@ parser.add_argument("--mode", help="Mode from [normal, crisis, medium-crisis]", 
 parser.add_argument("--iterations", help="Iterations", type=int, default="10")
 parser.add_argument("--time_steps", help="Time steps to run", type=int, default="10")
 parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
+parser.add_argument("--base", help="Base folder name", type=str, default="sim_output")
 args = parser.parse_args()
 
 std = args.std
@@ -17,6 +18,7 @@ mean = args.mean
 mode = args.mode
 iterations = args.iterations
 max_time_steps = args.time_steps
+input_folder_name = args.base
 
 # Dictionary to accumulate capacity data across all iterations
 accumulated_ward_data = {}
@@ -27,7 +29,7 @@ for i in range(iterations+1):
         break
     folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}_{args.adaptive}"
 
-    with open(f'sim_output/{folder_name}/allocation_results.json') as f:
+    with open(f'{input_folder_name}/{folder_name}/allocation_results.json') as f:
         data = json.load(f)
 
     # Extract allocations only
