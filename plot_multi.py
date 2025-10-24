@@ -83,7 +83,7 @@ for i in range(iterations+1):
         break
     folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}_{args.adaptive}"
 
-    with open(f'sim_output/{folder_name}/allocation_results.json') as f:
+    with open(f'{input_folder_name}/{folder_name}/allocation_results.json') as f:
         data = json.load(f)
 
     # Extract capacities
