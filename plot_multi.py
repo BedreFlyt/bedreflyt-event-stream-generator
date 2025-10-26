@@ -228,6 +228,6 @@ plt.axhline(y=45, color='purple', linestyle='-', linewidth=2.5, label='Initial c
 plt.axhline(y=49, color='brown', linestyle=':', linewidth=2.5, label='With extra office 1')
 plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='With extra office 2')
 plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='With corridor')
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12)
 plt.tight_layout()
 plt.show()
