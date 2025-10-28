@@ -98,6 +98,7 @@ for i, (_, label) in enumerate(components):
         print(f"  75th percentile: {percentiles[2]:.4f} seconds")
         print(f"  Average: {average:.4f} seconds")
         print(f"  Standard deviation: {std_dev:.4f} seconds")
+        print(f"  Max value: {max(all_values):.4f} seconds")
         
         # Store results for export
         percentile_results[label] = {
@@ -106,7 +107,9 @@ for i, (_, label) in enumerate(components):
             "75th_percentile": round(percentiles[2], 4),
             "average": round(average, 4),
             "standard_deviation": round(std_dev, 4),
-            "total_samples": len(all_values)
+            "total_samples": len(all_values),
+            "max_value": round(max(all_values), 4),
+            "min_value": round(min(all_values), 4)
         }
     else:
         print("  No data available.")
@@ -116,7 +119,9 @@ for i, (_, label) in enumerate(components):
             "75th_percentile": None,
             "average": None,
             "standard_deviation": None,
-            "total_samples": 0
+            "total_samples": 0,
+            "max_value": None,
+            "min_value": None
         }
 
 # Export to JSON
@@ -137,7 +142,7 @@ with open(f'{input_folder_name}/{output_filename}.json', 'w') as f:
 import csv
 with open(f'{input_folder_name}/{output_filename}.csv', 'w', newline='') as f:
     writer = csv.writer(f)
-    writer.writerow(['Component', '25th_Percentile_Seconds', '50th_Percentile_Seconds', '75th_Percentile_Seconds', 'Average_Seconds', 'Standard_Deviation_Seconds', 'Total_Samples'])
+    writer.writerow(['Component', '25th_Percentile_Seconds', '50th_Percentile_Seconds', '75th_Percentile_Seconds', 'Average_Seconds', 'Standard_Deviation_Seconds', 'Total_Samples', 'Max_Value_Seconds', 'Min_Value_Seconds'])
     for label, stats in percentile_results.items():
         writer.writerow([
             label,
@@ -146,7 +151,9 @@ with open(f'{input_folder_name}/{output_filename}.csv', 'w', newline='') as f:
             stats['75th_percentile'],
             stats['average'],
             stats['standard_deviation'],
-            stats['total_samples']
+            stats['total_samples'],
+            stats['max_value'],
+            stats['min_value']
         ])
 
 print(f"\nPercentile statistics exported to:")
