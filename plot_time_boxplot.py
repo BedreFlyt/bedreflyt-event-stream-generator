@@ -33,7 +33,7 @@ component_data = {label: [] for _, label in components}
 
 for i in range(iterations):
     folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}_{args.adaptive}"
-    with open(f'sim_output/{folder_name}/executions_time_step_times.json') as f:
+    with open(f'sim_output_no_peaks/{folder_name}/executions_time_step_times.json') as f:
         data = json.load(f)
     for entry in data:
         duration = entry['duration']
