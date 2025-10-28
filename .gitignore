@@ -2,6 +2,11 @@
 __pycache__/
 *.py[codz]
 *$py.class
+.DS_Store
+sim_output/
+sim_output*
+requests/
+plots/
 
 # C extensions
 *.so

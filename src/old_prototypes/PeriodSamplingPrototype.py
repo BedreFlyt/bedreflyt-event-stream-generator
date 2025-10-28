@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from bisect import insort_right
 import numpy as np
 from numpy import random
-from utils import get_index_in_time_intervals
+from src.utils import get_index_in_time_intervals
 
 class EventFrequency:
     def __init__(self, occurrences, time_intervals, period_variances, no_occurrences_variances):

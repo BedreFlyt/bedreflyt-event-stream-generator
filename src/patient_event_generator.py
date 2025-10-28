@@ -1,0 +1,290 @@
+from src.EventStreamGenerator import EventTimestampGenerator, EventSampleSpace
+from src.type.api_types import Diagnosis, Treatment
+from typing import List, Tuple, Dict, Set, Callable, Any
+
+import numpy as np
+
+class PatientDiagnosisETG(EventTimestampGenerator):
+    """
+    Generates synthetic patient diagnosis events.
+    """
+
+    def __init__ (self,
+                  occurrences: List[int],
+                  time_intervals: List[Tuple[int, int]],
+                  noise_sds: List[float] = None,
+                  occurrences_sds: List[float] = None,
+                  seed: int = 42,
+                  timestamp_constraints: Set[Callable[[dict, Any], bool]]={
+                     # Every timestamp (ts) must be non-negative
+                     lambda state, ts: ts > 0, 
+                     # Every timestamp (ts) must be greater than the prior expect for the first datapoint
+                     lambda state, ts: ts > state["timestamps"][-1] if (len(state["timestamps"])) != 0 else True,
+                     # Every timestamp (ts) must be within its own interval
+                     lambda state, ts: state["time_intervals"][state["current_interval"]][0] <= ts < state["time_intervals"][state["current_interval"]][1]
+                    },
+                  occurrences_constraints: Set[Callable[[dict, Any], bool]]={
+                        # The number of occurrences must be non-negative
+                        lambda state, o: o >= 0
+                    }
+                 ) -> None:
+        self.noise_sds = noise_sds or [0] * len(time_intervals)
+        self.occurrences_sds = occurrences_sds or [0] * len(occurrences)
+        self.seed = seed
+
+        super().__init__(occurrences, time_intervals, timestamp_constraints, occurrences_constraints)
+
+    def sample_noise (self, index: int) -> float:
+        """
+        Samples the noise for timestamp generation.
+        """
+        np.random.seed(self.seed)
+        return np.random.normal(loc=0, scale=self.noise_sds[index])
+
+    def sample_occurrences (self, occurrences_i: int, index: int) -> float:
+        """
+        Samples the occurrences for a given index.
+        Two levels of randomness:
+        - seed: for reproducibility (can be fixed) 
+        - occurrences_sds: for variation around the mean occurrence value
+        """
+        if self.occurrences_sds[index] == 0:
+            return occurrences_i
+
+        # Use a different random state for each call to ensure variation
+        if self.seed is not None:
+            # Create a unique deterministic seed
+            unique_seed = hash((self.seed, index)) % (7**7)
+            local_rng = np.random.RandomState(unique_seed)
+        else:
+            # Use the global random state if no seed is provided
+            local_rng = np.random
+        
+        # sample = int(np.round(local_rng.normal(
+        #     loc=occurrences_i, scale=self.occurrences_sds[index])))
+        sample = int(np.round(local_rng.poisson(lam=occurrences_i)))
+
+        return max(0, sample) # Ensure non-negative values
+
+class PatientDiagnosisSampleSpace(EventSampleSpace):
+    """
+    Defines the sample space for patient diagnosis events.
+
+    Events - generates (patient_id, diagnosis_code) pairs.
+    """
+    def __init__(self,
+                 patient_ids: List[str]=None,
+                 diagnosis_codes: List[Diagnosis]=None,
+                 treatments: List[Treatment]=None,
+                 seed: int = 42) -> None:
+        super().__init__()
+
+        self.seed = seed
+        self.patient_ids = patient_ids or [f"P{i}" for i in range(100)]
+
+        # Hardcoded from the current implementation of Bedreflyt for testing purposes
+        self.diagnosis_codes = diagnosis_codes or [
+            Diagnosis("G91.2"), # Normaltrykkshydrocephalus
+            Diagnosis("C71.2"), # Ondartet svulst i tinninglapp
+            Diagnosis("C71.3"), # Ondartet svulst i isselapp
+            Diagnosis("M50.0"), # Lidelse i cervikalskive, med myelopati
+            Diagnosis("M50.1"), # Lidelse i cervikalskive, med radikulopati
+            Diagnosis("S06.5"), # Traumatisk eller uspesifisert subduralblødning
+            Diagnosis("G50.0"), # Trigeminusnevralgi
+            Diagnosis("I67.1"), # Hjerneaneurisme uten ruptur
+            Diagnosis("I60.0"), # Subaraknoidalblødning fra carotissifong eller carotisbifurkatur
+            Diagnosis("I60.1") # Subaraknoidalblødning fra arteria cerebri media
+        ]
+
+        # Create sample treatments for each diagnosis code if treatments is None
+        if treatments is None:
+            self.treatments = [
+                Treatment(
+                    treatment_name="Surgical Drainage",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[0],  # G91.2
+                    frequency=70.0,
+                    weight=0.8,
+                    first_task_name="Pre-surgical Assessment",
+                    last_task_name="Post-operative Care"
+                ),
+                Treatment(
+                    treatment_name="Non Surgical Drainage",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[0],  # G91.2
+                    frequency=30.0,
+                    weight=0.8,
+                    first_task_name="Pre-surgical Assessment",
+                    last_task_name="Post-operative Care"
+                ),
+                Treatment(
+                    treatment_name="Tumor Resection",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[1],  # C71.2
+                    frequency=10.0,
+                    weight=0.9,
+                    first_task_name="Pre-operative Planning",
+                    last_task_name="Recovery Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Tumor Analysis",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[1],  # C71.2
+                    frequency=1.0,
+                    weight=0.9,
+                    first_task_name="Pre-operative Planning",
+                    last_task_name="Recovery Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Stereotactic Surgery",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[2],  # C71.3
+                    frequency=90.0,
+                    weight=0.85,
+                    first_task_name="Imaging Studies",
+                    last_task_name="Follow-up Assessment"
+                ),
+                Treatment(
+                    treatment_name="Cervical Fusion",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[3],  # M50.0
+                    frequency=40.0,
+                    weight=0.7,
+                    first_task_name="Spinal Assessment",
+                    last_task_name="Rehabilitation"
+                ),
+                Treatment(
+                    treatment_name="Cervical Fission",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[3],  # M50.0
+                    frequency=60.0,
+                    weight=0.7,
+                    first_task_name="Spinal Assessment",
+                    last_task_name="Rehabilitation"
+                ),
+                Treatment(
+                    treatment_name="Decompression Surgery",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[4],  # M50.1
+                    frequency=19.0,
+                    weight=0.75,
+                    first_task_name="Neurological Evaluation",
+                    last_task_name="Physical Therapy"
+                ),
+                Treatment(
+                    treatment_name="Decompression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[4],  # M50.1
+                    frequency=81.0,
+                    weight=0.75,
+                    first_task_name="Neurological Evaluation",
+                    last_task_name="Physical Therapy"
+                ),
+                Treatment(
+                    treatment_name="Craniotomy",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[5],  # S06.5
+                    frequency=20.0,
+                    weight=0.95,
+                    first_task_name="Emergency Assessment",
+                    last_task_name="Intensive Care"
+                ),
+                Treatment(
+                    treatment_name="Craniotomy Check",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[5],  # S06.5
+                    frequency=80.0,
+                    weight=0.95,
+                    first_task_name="Emergency Assessment",
+                    last_task_name="Intensive Care"
+                ),
+                Treatment(
+                    treatment_name="Microvascular Decompression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[6],  # G50.0
+                    frequency=95.0,
+                    weight=0.8,
+                    first_task_name="Pain Assessment",
+                    last_task_name="Pain Management"
+                ),
+                Treatment(
+                    treatment_name="Microvascular Compression",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[6],  # G50.0
+                    frequency=5.0,
+                    weight=0.8,
+                    first_task_name="Pain Assessment",
+                    last_task_name="Pain Management"
+                ),
+                Treatment(
+                    treatment_name="Aneurysm Clipping",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[7],  # I67.1
+                    frequency=50.0,
+                    weight=0.9,
+                    first_task_name="Vascular Imaging",
+                    last_task_name="Neurological Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Aneurysm MRI",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[7],  # I67.1
+                    frequency=50.0,
+                    weight=0.9,
+                    first_task_name="Vascular Imaging",
+                    last_task_name="Neurological Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Endovascular Coiling",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[8],  # I60.0
+                    frequency=70.0,
+                    weight=0.85,
+                    first_task_name="Angiography",
+                    last_task_name="ICU Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Endovascular Clamp",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[8],  # I60.0
+                    frequency=30.0,
+                    weight=0.85,
+                    first_task_name="Angiography",
+                    last_task_name="ICU Monitoring"
+                ),
+                Treatment(
+                    treatment_name="Surgical Clipping",
+                    treatment_description=None,
+                    diagnosis=self.diagnosis_codes[9],  # I60.1
+                    frequency=100.0,
+                    weight=0.9,
+                    first_task_name="Emergency Surgery",
+                    last_task_name="Critical Care"
+                )
+            ]
+        else:
+            self.treatments = treatments
+
+        
+
+    def sample(self, timestamp: int) -> Tuple[str, str]:
+        """
+        Generates a (patient_id, diagnosis_code) pair for timestamp.
+        """
+        unique_seed = hash((self.seed, timestamp)) % (7**7)
+        np.random.seed(unique_seed)
+        patient_id = np.random.choice(self.patient_ids)
+    
+        self.diagnosis_codes = [d for d in self.diagnosis_codes if d.diagnosis_name != "G50.0"]
+        diagnosis_code = np.random.choice(self.diagnosis_codes)
+        treatments = [t for t in self.treatments 
+              if t["diagnosis"]["diagnosisName"] == diagnosis_code.diagnosis_name]
+        treatments = [t for t in treatments if t]
+        if not treatments:
+            # Handle case where no treatments are found for this diagnosis
+            print(f"Warning: No treatments found for diagnosis {diagnosis_code.diagnosis_name}")
+            return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": None, "timestamp": timestamp}
+    
+        treatment = np.random.choice(treatments, p=[t["frequency"]/100 for t in treatments])
+
+        return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": treatment["treatmentName"], "timestamp": timestamp}
