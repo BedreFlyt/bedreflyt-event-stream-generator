@@ -215,19 +215,19 @@ for i, (ward, stats) in enumerate(capacity_statistics.items()):
     plt.fill_between(ward_x_indices, p25_capacities, p75_capacities, 
                      color=color, alpha=0.2)
 
-plt.title(f'Adaptation of capacity over time with varying allocations', fontsize=14)
-plt.xlabel('Time step', fontsize=12)
-plt.ylabel('Allocations and Capacity Counts', fontsize=12)
+plt.title(f'Adaptation of capacity over time with varying allocations', fontsize=22)
+plt.xlabel('Time step', fontsize=18)
+plt.ylabel('Allocations and Capacity Counts', fontsize=18)
 plt.grid(True)
 
 # Set x-tick labels to show actual time step values
 plt.xticks(x_indices, time_steps_sorted)
 
-plt.axhline(y=40, color='green', linestyle='--', linewidth=2.5, label='Adaptation threshold')
-plt.axhline(y=45, color='purple', linestyle='-', linewidth=2.5, label='Initial capacity')
-plt.axhline(y=49, color='brown', linestyle=':', linewidth=2.5, label='With extra office 1')
-plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='With extra office 2')
-plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='With corridor')
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12)
+plt.axhline(y=40, color='green', linestyle='--', linewidth=2.5, label='Load threshold')
+plt.axhline(y=45, color='purple', linestyle='-', linewidth=2.5, label='Initial ward capacity')
+plt.axhline(y=49, color='brown', linestyle=':', linewidth=2.5, label='Ward capacity with office 1')
+plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='Ward capacity with office 1 and 2')
+plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='Maximum ward capacity')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=14)
 plt.tight_layout()
 plt.show()
