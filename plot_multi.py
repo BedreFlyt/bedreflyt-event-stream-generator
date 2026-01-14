@@ -2,6 +2,7 @@ import json
 import matplotlib.pyplot as plt
 import argparse
 import numpy as np
+import os
 
 parser = argparse.ArgumentParser("plot-multi.py")
 parser.add_argument("--std", help="Standard deviation", type=int, default="1")
@@ -230,4 +231,10 @@ plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='Ward cap
 plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='Maximum ward capacity')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=14)
 plt.tight_layout()
-plt.show()
+
+# Create the plot folder under /app/output/plots/ if it doesn't exist
+os.makedirs("/app/output/plots", exist_ok=True)
+
+# Save the plot to the /app/output/plots/ directory
+plt.savefig(f"/app/output/plots/peak_adaptive_graph.svg", dpi=300)
+plt.close()

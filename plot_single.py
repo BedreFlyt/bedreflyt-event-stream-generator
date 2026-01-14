@@ -3,59 +3,12 @@ import matplotlib.pyplot as plt
 # import argparse
 import numpy as np
 import sys
-
-# parser = argparse.ArgumentParser("plot-multi.py")
-# parser.add_argument("--std", help="Standard deviation", type=int, default="1")
-# parser.add_argument("--mean", help="Mean", type=int, default="5")
-# parser.add_argument("--mode", help="Mode from [normal, crisis, medium-crisis]", type=str, default="normal")
-# parser.add_argument("--iterations", help="Iterations", type=int, default="10")
-# parser.add_argument("--time_steps", help="Time steps to run", type=int, default="10")
-# parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
-# parser.add_argument("--base", help="Base folder name", type=str, default="sim_output")
-# args = parser.parse_args()
-
-# std = args.std
-# mean = args.mean
-# mode = args.mode
-# iterations = args.iterations
-# max_time_steps = args.time_steps
-# input_folder_name = args.base
+import os
 
 folder = sys.argv[1]
 
 # Dictionary to accumulate capacity data across all iterations
 accumulated_ward_data = {}
-
-# Load and accumulate data from all iterations
-# for i in range(iterations+1):
-#     if i == iterations:
-#         break
-#     folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}_{args.adaptive}"
-
-#     with open(f'{input_folder_name}/{folder_name}/allocation_results.json') as f:
-#         data = json.load(f)
-
-#     # Extract allocations only
-#     allocations = data['allocations']
-
-#     # Organize data by ward
-#     wards = set(item['ward'] for item in allocations)
-
-#     for item in allocations:
-#         ward = item['ward']
-#         time_step = item['time_step']
-#         allocation = item['allocations']
-
-#         # Initialize ward data structure if not exists
-#         if ward not in accumulated_ward_data:
-#             accumulated_ward_data[ward] = {}
-        
-#         # Initialize time step data if not exists
-#         if time_step not in accumulated_ward_data[ward]:
-#             accumulated_ward_data[ward][time_step] = []
-
-#         # Accumulate allocation values
-#         accumulated_ward_data[ward][time_step].append(allocation)
 
 with open(f'{folder}/allocation_results.json') as f:
     data = json.load(f)
@@ -104,13 +57,6 @@ for ward, time_data in accumulated_ward_data.items():
 
 
 accumulated_capacity_data = {}
-
-# Load and accumulate data for capacities from all iterations
-# for i in range(iterations+1):
-#     if i == iterations:
-#         break
-#     folder_name = f"{mode}_{mean}_{std}_{i}_{max_time_steps}_{args.adaptive}"
-
 with open(f'{folder}/allocation_results.json') as f:
     data = json.load(f)
 
@@ -187,21 +133,6 @@ for i, (ward, stats) in enumerate(ward_statistics.items()):
              color=color, 
              linewidth=2)
     
-    # Plot percentiles as lighter lines using indices
-    # plt.plot(ward_x_indices, p25_allocations, 
-    #          color=color, 
-    #          linestyle='-.', 
-    #          alpha=0.7, 
-    #          linewidth=1.3,
-    #          label=f'Allocations 25th percentile')
-    
-    # plt.plot(ward_x_indices, p75_allocations, 
-    #          color=color, 
-    #          linestyle=':', 
-    #          alpha=0.7, 
-    #          linewidth=1.3,
-    #          label=f'Allocations 75th percentile')
-    
     # Fill area between 25th and 75th percentiles using indices
     plt.fill_between(ward_x_indices, p25_allocations, p75_allocations, 
                      color=color, alpha=0.2)
@@ -226,22 +157,6 @@ for i, (ward, stats) in enumerate(capacity_statistics.items()):
              color=color, 
              linestyle='--', 
              linewidth=2)
-    # Plot percentiles as lighter lines using indices
-    # plt.plot(ward_x_indices, p25_capacities, 
-    #          color=color, 
-    #          linestyle='-.', 
-    #          alpha=0.7, 
-    #          linewidth=1.3,
-    #          label=f'Capacity 25th percentile')
-    
-    # plt.plot(ward_x_indices, p75_capacities, 
-    #          color=color, 
-    #          linestyle=':', 
-    #          alpha=0.7, 
-    #          linewidth=1.3,
-    #          label=f'Capacity 75th percentile')
-    # plt.fill_between(ward_x_indices, p25_capacities, p75_capacities, 
-    #                  color=color, alpha=0.2)
 
 plt.title(f'Adaptation of capacity over time with varying allocations', fontsize=14)
 plt.xlabel('Time step', fontsize=12)
@@ -258,4 +173,10 @@ plt.axhline(y=53, color='silver', linestyle='-.', linewidth=2.5, label='Ward cap
 plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label='Maximum ward capacity')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
-plt.show()
+
+# Create the plot folder under /app/output/plots/ if it doesn't exist
+os.makedirs("/app/output/plots", exist_ok=True)
+
+# Save the plot to the /app/output/plots/ directory
+plt.savefig(f"/app/output/plots/single_adaptive_graph.svg", dpi=300)
+plt.close()
