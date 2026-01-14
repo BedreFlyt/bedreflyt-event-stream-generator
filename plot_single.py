@@ -1,11 +1,12 @@
 import json
 import matplotlib.pyplot as plt
-# import argparse
+import argparse
 import numpy as np
 import sys
 import os
 
 folder = sys.argv[1]
+output_base = os.getenv("OUTPUT_FOLDER", "./output")
 
 # Dictionary to accumulate capacity data across all iterations
 accumulated_ward_data = {}
@@ -175,8 +176,8 @@ plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 
 # Create the plot folder under /app/output/plots/ if it doesn't exist
-os.makedirs("/app/output/plots", exist_ok=True)
+os.makedirs(f"{output_base}/plots", exist_ok=True)
 
 # Save the plot to the /app/output/plots/ directory
-plt.savefig(f"/app/output/plots/single_adaptive_graph.svg", dpi=300)
+plt.savefig(f"{output_base}/plots/single_adaptive_graph.svg", dpi=300)
 plt.close()

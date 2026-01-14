@@ -21,6 +21,9 @@ iterations = args.iterations
 max_time_steps = args.time_steps
 input_folder_name = args.base
 
+# Derive output base folder from input_folder_name (e.g., /output/sim_output -> ./output)
+output_base = os.getenv("OUTPUT_FOLDER", "./output")
+
 # Dictionary to accumulate capacity data across all iterations
 accumulated_ward_data = {}
 
@@ -232,9 +235,9 @@ plt.axhline(y=93, color='red', linestyle=(0, (3, 5, 1, 5)), linewidth=2.5, label
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=14)
 plt.tight_layout()
 
-# Create the plot folder under /app/output/plots/ if it doesn't exist
-os.makedirs("/app/output/plots", exist_ok=True)
+# Create the plot folder under output_base/plots/ if it doesn't exist
+os.makedirs(f"{output_base}/plots", exist_ok=True)
 
-# Save the plot to the /app/output/plots/ directory
-plt.savefig(f"/app/output/plots/peak_adaptive_graph.svg", dpi=300)
+# Save the plot to the output_base/plots/ directory
+plt.savefig(f"{output_base}/plots/peak_adaptive_graph.svg", dpi=300)
 plt.close()
