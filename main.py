@@ -19,8 +19,9 @@ import numpy as np
 
 import numpy as np
 
-host = "localhost"
-url = f"http://{host}:8090/api/v1"
+host = os.getenv("API_HOST", "localhost")
+port = os.getenv("API_PORT", "8090")
+url = f"http://{host}:{port}/api/v1"
 headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
