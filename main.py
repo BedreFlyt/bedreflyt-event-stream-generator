@@ -17,10 +17,9 @@ import logging
 import math
 import numpy as np
 
-import numpy as np
-
-host = "localhost"
-url = f"http://{host}:8090/api/v1"
+host = os.getenv("API_HOST", "localhost")
+port = os.getenv("API_PORT", "8090")
+url = f"http://{host}:{port}/api/v1"
 headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -148,7 +147,8 @@ def test_allocation(
         adaptive: bool,
         peaks: bool,
         starts_at: int,
-        client: APIClient):
+        client: APIClient,
+        output_folder: str = "./output"):
     time_step_times = []
     total_capacities = []
     total_allocations = []
@@ -276,15 +276,15 @@ def test_allocation(
     folder_name = f"{mode}_{mean}_{std}_{iteration}_{time_steps}_{adaptive}"
 
     # Create folder {mode}_{mean}_{std}_{iteration}_{time_steps}
-    os.makedirs(f"sim_output/{folder_name}", exist_ok=True)
+    os.makedirs(f"{output_folder}/sim_output/{folder_name}", exist_ok=True)
 
-    with open(f"sim_output/{folder_name}/allocation_results.json", "w") as file:
+    with open(f"{output_folder}/sim_output/{folder_name}/allocation_results.json", "w") as file:
         json.dump(output_data, file, indent=4)
 
-    with open(f"sim_output/{folder_name}/time_step_times.json", "w") as file:
+    with open(f"{output_folder}/sim_output/{folder_name}/time_step_times.json", "w") as file:
         json.dump(time_step_times, file, indent=4)
 
-    with open(f"sim_output/{folder_name}/executions_time_step_times.json", "w") as file:
+    with open(f"{output_folder}/sim_output/{folder_name}/executions_time_step_times.json", "w") as file:
         json.dump(total_times_results, file, indent=4)
 
     logging.info("Execution completed. Results saved to 'allocation_results.json' and 'time_step_times.json'.")
@@ -303,6 +303,7 @@ if __name__ == "__main__":
     parser.add_argument("--starts_at", help="Start execution at a specific time step", type=int, default=0)
     parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--peak-adaptive", help="Use peak adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--output", help="Output folder path", type=str, default=os.getenv("OUTPUT_FOLDER", "/app/output"))
     args = parser.parse_args()
     
     if args.mode not in ["normal", "crisis", "medium-crisis", "variable"]:
@@ -342,6 +343,6 @@ if __name__ == "__main__":
         time.sleep(1)
         print("Starting allocation test")
 
-        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, args.peak_adaptive, starts_at, client)
+        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, args.peak_adaptive, starts_at, client, args.output)
 
         # client.delete_rooms_for_neurosurgery_oslo()
