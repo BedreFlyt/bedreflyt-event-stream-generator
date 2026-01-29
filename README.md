@@ -9,7 +9,8 @@
 
 
 # About This Project
-Welcome to the *Synthetic Event Stream Generator* project! The objective of this project is to build and maintain a general purpose synthetic event / synthetic data generator for digital twins. 
+Welcome to the *Synthetic Event Stream Generator* project! The objective of this project is to build and maintain a general purpose synthetic event / synthetic data generator for digital twins. This project is a fork of (https://github.com/BusterSalomon/UIO-DT-Synthetic-Event-Stream-Generator). Use that for the latest version and to adapt that to your need.
+
 # Prerequisites
 It is recommended that you are familiar with:
 - Python
