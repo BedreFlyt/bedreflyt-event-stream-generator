@@ -19,6 +19,8 @@ import numpy as np
 
 host = os.getenv("API_HOST", "localhost")
 port = os.getenv("API_PORT", "8090")
+sbl_host = os.getenv("SBL_HOST", "localhost")
+sbl_port = os.getenv("SBL_PORT", "8092")
 url = f"http://{host}:{port}/api/v1"
 headers = {
     'Content-Type': 'application/json',
@@ -35,6 +37,15 @@ logging.basicConfig(
 )
 
 events = {}
+
+sbl_url = f"http://{sbl_host}:{sbl_port}/api/supply-management"
+
+def reset_sbl():
+    response = requests.post(f"{sbl_url}/reset-simulation-maps")
+    if response.status_code == 200:
+        logger.info("SBL simulation maps reset successfully")
+    else:
+        logger.warning(f"Failed to reset SBL simulation maps: {response.status_code}")
 
 # Callback function to handle events
 def event_handler(event):
@@ -148,7 +159,9 @@ def test_allocation(
         peaks: bool,
         starts_at: int,
         client: APIClient,
-        output_folder: str = "./output"):
+        output_folder: str = "./output",
+        enable_sbl: bool = False,
+        adaptive_sbl: bool = False):
     time_step_times = []
     total_capacities = []
     total_allocations = []
@@ -218,7 +231,8 @@ def test_allocation(
             "wardName": ward_name,
             "hospitalCode": hospital_code,
             "timeStep": k,
-            "adaptiveCapacity": adaptive
+            "adaptiveCapacity": adaptive,
+            "sbl": adaptive_sbl
         }
 
         with open(f"requests/{mean}_{std}_{mode}_{iteration}_{k}_{time_steps}_payload.json", "w") as file:
@@ -260,6 +274,16 @@ def test_allocation(
             "ward": ward_key,
             "allocations": len(client.get_allocations())
         })
+
+        if enable_sbl:
+            sbl_response = requests.get(f"{sbl_url}/simulation-maps")
+            if sbl_response.status_code == 200:
+                sbl_data = sbl_response.json()
+                os.makedirs(f"{output_folder}/sbl_output", exist_ok=True)
+                with open(f"{output_folder}/sbl_output/sbl_res_{k}_{iteration}.json", "w") as file:
+                    json.dump(sbl_data, file, indent=4)
+            else:
+                logger.warning(f"Failed to fetch SBL simulation maps at time_step {k}: {sbl_response.status_code}")
 
     end_time = time.time()  # End timing the time_step
     time_step_duration = end_time - start_time
@@ -304,6 +328,8 @@ if __name__ == "__main__":
     parser.add_argument("--adaptive", help="Use adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--peak-adaptive", help="Use peak adaptive capacity", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--output", help="Output folder path", type=str, default=os.getenv("OUTPUT_FOLDER", "/app/output"))
+    parser.add_argument("--enable-sbl", help="Enable SBL supply management integration", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--adaptive-sbl", help="Use adaptive SBL", action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
     
     if args.mode not in ["normal", "crisis", "medium-crisis", "variable"]:
@@ -331,6 +357,9 @@ if __name__ == "__main__":
         client.create_rooms_for_neurosurgery_oslo()
         # os.system("redis-cli FLUSHALL")
 
+    if args.enable_sbl:
+        reset_sbl()
+
     for iteration in range(args.iterations):
         print('Iteration', iteration)
         if iteration < starts_at:
@@ -343,6 +372,6 @@ if __name__ == "__main__":
         time.sleep(1)
         print("Starting allocation test")
 
-        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, args.peak_adaptive, starts_at, client, args.output)
+        test_allocation(args.mode, args.mean, args.std, iteration, args.time_steps, args.adaptive, args.peak_adaptive, starts_at, client, args.output, args.enable_sbl, args.adaptive_sbl)
 
         # client.delete_rooms_for_neurosurgery_oslo()
