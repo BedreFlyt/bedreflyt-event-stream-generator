@@ -285,6 +285,10 @@ class PatientDiagnosisSampleSpace(EventSampleSpace):
             print(f"Warning: No treatments found for diagnosis {diagnosis_code.diagnosis_name}")
             return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": None, "timestamp": timestamp}
     
-        treatment = np.random.choice(treatments, p=[t["frequency"]/100 for t in treatments])
+        if len(treatments) == 1:
+            probs = [1.0]
+        else:
+            probs = [t["frequency"]/100 for t in treatments]
+        treatment = np.random.choice(treatments, p=probs)
 
         return {"patient_id": patient_id, "diagnosis_code": diagnosis_code.diagnosis_name, "treatment": treatment["treatmentName"], "timestamp": timestamp}

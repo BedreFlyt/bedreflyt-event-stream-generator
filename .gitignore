@@ -7,6 +7,7 @@ sim_output/
 sim_output*
 requests/
 plots/
+output/
 
 # C extensions
 *.so

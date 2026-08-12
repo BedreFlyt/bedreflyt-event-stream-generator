@@ -3,9 +3,10 @@ import random
 
 class APIClient:
 
-    def __init__(self, host="localhost"):
+    def __init__(self, host="localhost", port=8090):
         self.host = host
-        self.url = f"http://{self.host}:8090/api/v1"
+        self.port = port
+        self.url = f"http://{self.host}:{self.port}/api/v1"
         self.headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -80,7 +81,7 @@ class APIClient:
     def set_host(self, new_host):
         """Set the host for the API."""
         self.host = new_host
-        self.url = f"http://{self.host}:8090/api/v1"
+        self.url = f"http://{self.host}:{self.port}/api/v1"
         print(f"Host set to {self.host}. URL is now {self.url}")
 
     def get_users(self):
